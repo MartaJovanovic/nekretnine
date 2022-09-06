@@ -1,6 +1,7 @@
 html,
 body {
 	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background-color: brown;
 }
 @font-face {
   font-family: 'Material Icons';
@@ -32,4 +33,7 @@ body {
   /* Support for Firefox. */
   -moz-osx-font-smoothing: grayscale;
 }
-
+.navbar-menu{
+  background-color: burlywood;
+  color: brown;
+}
