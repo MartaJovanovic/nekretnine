@@ -51,7 +51,7 @@
 
 
 (defn get-adrese []
-  (GET "/adrese"
+  (GET "/api/adrese"
     {:headers {"Accept" "application/transit+json"}
      :handler #(rf/dispatch [:adrese/set (:adrese %)])}))
 
@@ -62,7 +62,7 @@
 (defn send-adresa! [fields errors]
   (if-let [validation-errors (validate-adresa @fields)]
     (reset! errors validation-errors)
-    (POST "/adresa"
+    (POST "/api/adresa"
       {:format :json
        :headers
        {"Accept" "application/transit+json"
