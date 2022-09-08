@@ -2,6 +2,7 @@
   (:require
    [nekretnine.layout :as layout]
    [nekretnine.db.core :as db]
+   [nekretnine.adrese :as adr]
    [clojure.java.io :as io]
    [nekretnine.middleware :as middleware]
    [ring.util.response]
@@ -9,22 +10,23 @@
    [nekretnine.validation :refer [validate-adresa]]))
 
 
-
-
 (defn adresa-list [_]
-  (response/ok {:adrese (vec (db/get-adrese))}))
-
+  (response/ok (adr/adresa-list)))
 
 
 (defn save-adresa! [{:keys [params]}]
-  (if-let [errors (validate-adresa params)]
-    (response/bad-request {:errors errors})
-    (try
-      (db/save-adresa! params)
-      (response/ok {:status :ok})
-      (catch Exception e
-        (response/internal-server-error
-         {:errors {:server-error ["Neuspelo cuvanje"]}})))))
+  (try
+    (adr/save-adresa! params)
+    (response/ok {:status :ok})
+    (catch Exception e
+      (let [{id :nekretnine/error-id
+             errors :errors} (ex-data e)]
+        (case id
+          :validation
+          (response/bad-request {:errors errors})
+;;else
+          (response/internal-server-error
+           {:errors {:server-error ["Neuspelo cuvanje"]}}))))))
 
 
 (defn home-page [request]
