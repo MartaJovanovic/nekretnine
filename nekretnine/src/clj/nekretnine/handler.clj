@@ -4,6 +4,7 @@
    [nekretnine.layout :refer [error-page]]
    [nekretnine.routes.home :refer [home-routes]]
    [nekretnine.routes.services :refer [service-routes]]
+   [nekretnine.routes.websockets :refer [websocket-routes]]
    [reitit.ring :as ring]
    [ring.middleware.content-type :refer [wrap-content-type]]
    [ring.middleware.webjars :refer [wrap-webjars]]
@@ -20,7 +21,8 @@
   (ring/ring-handler
    (ring/router
     [(home-routes)
-     (service-routes)]
+     (service-routes)
+     (websocket-routes)]
     {:reitit.middleware/transform dev/print-request-diffs})
    (ring/routes
     (ring/create-resource-handler
