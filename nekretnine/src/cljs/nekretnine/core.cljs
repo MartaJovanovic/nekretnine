@@ -70,7 +70,9 @@
        :params @fields
        :handler (fn [_]
                   (rf/dispatch
-                   [:adrese/add (assoc @fields :timestamp (js/Date.))])
+                   [:adrese/add  (-> @fields
+                                     (assoc :timestamp (js/Date.))
+                                     (update :ime str " [CLIENT]"))])
                   (reset! fields nil)
                   (reset! errors nil))
        :error-handler (fn [e]
@@ -119,8 +121,6 @@
 
 (defn home []
   (let [adrese (rf/subscribe [:adrese/list])]
-    (rf/dispatch [:app/initialize])
-    (get-adrese)
     (fn []
       [:div.content>div.columns.is-centered>div.column.is-two-thirds
        (if @(rf/subscribe [:adrese/loading?])
@@ -132,6 +132,20 @@
           [:div.columns>div.column
            [adresa-form]]])])))
 
+(defn ^:dev/after-load mount-components []
+  (rf/clear-subscription-cache!)
+  (.log js/console "Mounting Components...")
+  (dom/render [#'home] (.getElementById js/document "content"))
+  (.log js/console "Components Mounted!"))
+
+
+(defn init! []
+  (.log js/console "Initializing App...")
+  (rf/dispatch [:app/initialize])
+  (get-adrese)
+  (mount-components))
+
+(.log js/console "nekretnine.core evaluated!")
 
 (dom/render
  [home]
