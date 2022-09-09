@@ -5,7 +5,57 @@
              [ajax.core :refer [GET POST]]
              [clojure.string :as string]
              [nekretnine.validation :refer [validate-adresa]]
-             [nekretnine.websockets :as ws]))
+             [nekretnine.websockets :as ws]
+             [mount.core :as mount]))
+
+
+(rf/reg-fx
+ :ajax/get
+ (fn [{:keys [url success-event error-event success-path]}]
+   (GET url
+     (cond-> {:headers {"Accept" "application/transit+json"}}
+       success-event (assoc :handler
+                            #(rf/dispatch
+                              (conj success-event
+                                    (if success-path
+                                      (get-in % success-path)
+                                      %))))
+       error-event (assoc :error-handler
+                          #(rf/dispatch
+                            (conj error-event %)))))))
+
+(defn text-input [{val :value
+                   attrs :attrs
+                   :keys [on-save]}]
+  (let [draft (r/atom nil)
+        value (r/track #(or @draft @val ""))]
+    (fn []
+      [:input.input
+       (merge attrs
+              {:type :text
+               :on-focus #(reset! draft (or @val ""))
+               :on-blur (fn []
+                          (on-save (or @draft ""))
+                          (reset! draft nil))
+               :on-change #(reset! draft (.. % -target -value))
+               :value @value})])))
+
+(defn textarea-input [{val :value
+                       attrs :attrs
+                       :keys [on-save]}]
+  (let [draft (r/atom nil)
+        value (r/track #(or @draft @val ""))]
+    (fn []
+      [:textarea.textarea
+       (merge attrs
+              {:on-focus #(reset! draft (or @val ""))
+               :on-blur (fn []
+                          (on-save (or @draft ""))
+                          (reset! draft nil))
+               :on-change #(reset! draft (.. % -target -value))
+               :value @value})])))
+
+
 
 
 
@@ -18,12 +68,10 @@
 (rf/reg-event-fx
  :adrese/load
  (fn [{:keys [db]} _]
-   (GET "/api/adrese"
-     {:headers {"Accept" "application/transit+json"}
-      :handler #(rf/dispatch [:adrese/set (:adrese %)])})
-   {:db (assoc db :adrese/loading? true)}))
-
-
+   {:db (assoc db :adrese/loading? true)
+    :ajax/get {:url "/api/adrese"
+               :success-path [:adrese]
+               :success-event [:adrese/set]}}))
 
 (rf/reg-sub
  :adrese/loading?
@@ -109,10 +157,24 @@
    (get errors id)))
 
 (rf/reg-event-fx
+ :adrese/send!-called-back
+ (fn [_ [_ {:keys [success errors]}]]
+   (if success
+     {:dispatch [:form/clear-fields]}
+     {:dispatch [:form/set-server-errors errors]})))
+
+
+(rf/reg-event-fx
  :adrese/send!
  (fn [{:keys [db]} [_ fields]]
-   (ws/send-adresa! fields)
-   {:db (dissoc db :form/server-errors)}))
+   {:db (dissoc db :form/server-errors)
+    :ws/send! {:adrese [:adrese/create! fields]
+               :timeout 10000
+               :callback-event [:adrese/send!-called-back]}}))
+
+
+
+
 
 
 (defn handle-response! [response]
@@ -157,24 +219,16 @@
    [:div.field
     [:label.label {:for :ime} "Ime"]
     [errors-component :ime]
-    [:input.input
-     {:type :text
-      :name :ime
-      :on-change #(rf/dispatch
-                   [:form/set-field
-                    :ime
-                    (.. % -target -value)])
-      :value @(rf/subscribe [:form/field :ime])}]]
+    [text-input {:attrs {:name :ime}
+                 :value (rf/subscribe [:form/field :ime])
+                 :on-save #(rf/dispatch [:form/set-field :ime %])}]]
    [:div.field
     [:label.label {:for :adresa} "Adresa"]
     [errors-component :adresa]
-    [:textarea.textarea
-     {:name :adresa
-      :value  @(rf/subscribe [:form/field :adresa])
-      :on-change  #(rf/dispatch
-                    [:form/set-field
-                     :adresa
-                     (.. % -target -value)])}]]
+    [textarea-input
+     {:attrs {:name :adresa}
+      :value (rf/subscribe [:form/field :adresa])
+      :on-save #(rf/dispatch [:form/set-field :adresa %])}]]
    [:input.button.is-primary
     {:type :submit
      :disabled @(rf/subscribe [:form/validation-errors?])
@@ -217,10 +271,10 @@
 
 (defn init! []
   (.log js/console "Initializing App...")
+  (mount/start)
   (rf/dispatch [:app/initialize])
-  (ws/connect! (str "ws://" (.-host js/location) "/ws")
-               handle-response!)
   (mount-components))
+
 
 (.log js/console "nekretnine.core evaluated!")
 
