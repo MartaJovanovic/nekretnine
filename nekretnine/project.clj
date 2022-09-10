@@ -6,7 +6,6 @@
   :dependencies [[ch.qos.logback/logback-classic "1.2.3"]
                  [cheshire "5.10.0"]
                  [clojure.java-time "0.3.2"]
-                 [com.h2database/h2 "1.4.200"]
                  [conman "0.9.1"]
                  [cprop "0.1.17"]
                  [expound "0.8.7"]
@@ -39,7 +38,9 @@
                  [org.clojure/google-closure-library "0.0-20191016-6ae1f72f" :scope "provided"]
                  [thheller/shadow-cljs "2.11.14" :scope "provided"]
                  [day8.re-frame/re-frame-10x "1.2.2"]
-                 [com.taoensso/sente "1.16.0"]]
+                 [com.taoensso/sente "1.16.0"]
+                 [org.postgresql/postgresql "42.2.18"]
+                 [buddy "2.0.0"]]
 
 
 

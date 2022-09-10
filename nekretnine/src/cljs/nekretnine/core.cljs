@@ -57,13 +57,35 @@
 
 
 
-
-
 (rf/reg-event-fx
  :app/initialize
  (fn [_ _]
-   {:db {:adrese/loading? true}
-    :dispatch [:adrese/load]}))
+   {:db {:adrese/loading? true
+         :session/loading? true}
+    :dispatch-n [[:session/load] [:adrese/load]]}))
+
+(rf/reg-event-fx
+ :session/load
+ (fn [{:keys [db]} _]
+   {:db (assoc db :session/loading? true)
+    :ajax/get {:url "/api/session"
+               :success-path [:session]
+               :success-event [:session/set]}}))
+
+(rf/reg-event-db
+ :session/set
+ (fn [db [_ {:keys [identity]}]]
+   (assoc db
+          :auth/user identity
+          :session/loading? false)))
+
+(rf/reg-sub
+ :session/loading?
+ (fn [db _]
+   (:session/loading? db)))
+
+
+
 
 (rf/reg-event-fx
  :adrese/load
@@ -173,7 +195,207 @@
                :callback-event [:adrese/send!-called-back]}}))
 
 
+(rf/reg-event-db
+ :app/show-modal
+ (fn [db [_ modal-id]]
+   (assoc-in db [:app/active-modals modal-id] true)))
 
+(rf/reg-event-db
+ :app/hide-modal
+ (fn [db [_ modal-id]]
+   (update db :app/active-modals dissoc modal-id)))
+
+(rf/reg-sub
+ :app/active-modals
+ (fn [db _]
+   (:app/active-modals db {})))
+
+(rf/reg-sub
+ :app/modal-showing?
+ :<- [:app/active-modals]
+ (fn [modals [_ modal-id]]
+   (get modals modal-id false)))
+
+(rf/reg-event-db
+ :auth/handle-login
+ (fn [db [_ {:keys [identity]}]]
+   (assoc db :auth/user identity)))
+
+(rf/reg-event-db
+ :auth/handle-logout
+ (fn [db _]
+   (dissoc db :auth/user)))
+
+(rf/reg-sub
+ :auth/user
+ (fn [db _]
+   (:auth/user db)))
+
+(rf/reg-sub
+ :auth/user-state
+ :<- [:auth/user]
+ :<- [:session/loading?]
+ (fn [[user loading?]]
+   (cond
+     (true? loading?) :loading
+     user :authenticated
+     :else :anonymous)))
+
+
+
+(defn modal-card [id title body footer]
+  [:div.modal
+   {:class (when @(rf/subscribe [:app/modal-showing? id]) "is-active")}
+   [:div.modal-background
+    {:on-click #(rf/dispatch [:app/hide-modal id])}]
+   [:div.modal-card
+    [:header.modal-card-head
+     [:p.modal-card-title title]
+     [:button.delete
+      {:on-click #(rf/dispatch [:app/hide-modal id])}]]
+    [:section.modal-card-body
+     body]
+    [:footer.modal-card-foot
+     footer]]])
+
+(defn modal-button [id title body footer]
+  [:div
+   [:button.button.is-primary
+    {:on-click #(rf/dispatch [:app/show-modal id])}
+    title]
+   [modal-card id title body footer]])
+
+
+
+
+
+(defn login-button []
+  (r/with-let
+    [fields (r/atom {})
+     error (r/atom nil)
+     do-login
+     (fn [_]
+       (reset! error nil)
+       (POST "/api/login"
+         {:headers {"Accept" "application/transit+json"}
+          :params @fields
+          :handler (fn [response]
+                     (reset! fields {})
+                     (rf/dispatch [:auth/handle-login response])
+                     (rf/dispatch [:app/hide-modal :user/login]))
+          :error-handler (fn [error-response]
+                           (reset! error
+                                   (or
+                                    (:message (:response error-response))
+                                    (:status-text error-response)
+                                    "Unknown Error")))}))]
+    [modal-button :user/login
+;; Title
+     "Log In"
+;; Body
+     [:div
+      (when-not (string/blank? @error)
+        [:div.notification.is-danger
+         @error])
+      [:div.field
+       [:div.label "Login"]
+       [:div.control
+        [:input.input
+         {:type "text"
+          :value (:login @fields)
+          :on-change #(swap! fields assoc :login (.. % -target -value))}]]]
+      [:div.field
+       [:div.label "lozinka"]
+       [:div.control
+        [:input.input
+         {:type "lozinka"
+          :value (:lozinka @fields)
+          :on-change #(swap! fields assoc :lozinka (.. % -target -value))
+;; Submit login form when `Enter` key is pressed
+          :on-key-down #(when (= (.-keyCode %) 13)
+                          (do-login))}]]]]
+;; Footer
+     [:button.button.is-primary.is-fullwidth
+      {:on-click do-login
+       :disabled (or (string/blank? (:login @fields))
+                     (string/blank? (:lozinka @fields)))}
+      "Log In"]]))
+
+
+
+
+(defn register-button []
+  (r/with-let
+    [fields (r/atom {})
+     error (r/atom nil)
+     do-register
+     (fn [_]
+       (reset! error nil)
+       (POST "/api/register"
+         {:headers {"Accept" "application/transit+json"}
+          :params @fields
+          :handler (fn [response]
+                     (reset! fields {})
+                     (rf/dispatch [:app/hide-modal :user/register])
+                     (rf/dispatch [:app/show-modal :user/login]))
+          :error-handler (fn [error-response]
+                           (reset! error
+                                   (or
+                                    (:message (:response error-response))
+                                    (:status-text error-response)
+                                    "Unknown Error")))}))]
+    [modal-button :user/register
+;; Title
+     "Napravi novi nalog"
+;; Body
+     [:div
+      (when-not (string/blank? @error)
+        [:div.notification.is-danger
+         @error])
+      [:div.field
+       [:div.label "Login"]
+       [:div.control
+        [:input.input
+         {:type "text"
+          :value (:login @fields)
+          :on-change #(swap! fields assoc :login (.. % -target -value))}]]]
+      [:div.field
+       [:div.label "lozinka"]
+       [:div.control
+        [:input.input
+         {:type "lozinka"
+          :value (:lozinka @fields)
+          :on-change #(swap! fields assoc :lozinka (.. % -target -value))}]]]
+      [:div.field
+       [:div.label "Potvrdi lozinku"]
+       [:div.control
+        [:input.input
+         {:type "lozinka"
+          :value (:confirm @fields)
+          :on-change #(swap! fields assoc :confirm (.. % -target -value))
+ ;; Submit login form when `Enter` key is pressed
+          :on-key-down #(when (= (.-keyCode %) 13)
+                          (do-register))}]]]]
+;; Footer
+     [:button.button.is-primary.is-fullwidth
+      {:on-click do-register
+       :disabled (or (string/blank? (:login @fields))
+                     (string/blank? (:lozinka @fields))
+                     (string/blank? (:confirm @fields)))}
+      "Napravi novi nalog"]]))
+
+
+
+
+(defn logout-button []
+  [:button.button
+   {:on-click #(POST "/api/logout"
+                 {:handler (fn [_]
+                             (rf/dispatch [:auth/handle-logout]))})}
+   "Log Out"])
+(defn nameplate [{:keys [login]}]
+  [:button.button.is-primary
+   login])
 
 
 
@@ -249,7 +471,6 @@
 
 
 
-
 (defn home []
   (let [adrese (rf/subscribe [:adrese/list])]
     (fn []
@@ -262,10 +483,62 @@
        [:div.columns>div.column
         [adresa-form]]])))
 
+(defn navbar []
+  (let [burger-active (r/atom false)]
+    (fn []
+      [:nav.navbar.is-info
+       [:div.container
+        [:div.navbar-brand
+         [:a.navbar-item
+          {:href "/"
+           :style {:font-weight "bold"}}
+          "nekretnine"]
+         [:span.navbar-burger.burger
+          {:data-target "nav-menu"
+           :on-click #(swap! burger-active not)
+           :class (when @burger-active "is-active")}
+          [:span]
+          [:span]
+          [:span]]]
+        [:div#nav-menu.navbar-menu
+         {:class (when @burger-active "is-active")}
+         [:div.navbar-start
+          [:a.navbar-item
+           {:href "/"}
+           "Home"]]
+         [:div.navbar-end
+          [:div.navbar-item
+           (case @(rf/subscribe [:auth/user-state])
+             :loading
+             [:div {:style {:width "5em"}}
+              [:progress.progress.is-dark.is-small {:max 100} "30%"]]
+             :authenticated
+             [:div.buttons
+              [nameplate @(rf/subscribe [:auth/user])]
+              [logout-button]]
+             :anonymous
+             [:div.buttons
+              [login-button]
+              [register-button]])]]]]])))
+
+
+(defn app []
+  [:div.app
+   [navbar]
+   [:section.section
+    [:div.container
+     [home]]]])
+
+
+
+
+
+
+
 (defn ^:dev/after-load mount-components []
   (rf/clear-subscription-cache!)
   (.log js/console "Mounting Components...")
-  (dom/render [#'home] (.getElementById js/document "content"))
+  (dom/render [#'app] (.getElementById js/document "content"))
   (.log js/console "Components Mounted!"))
 
 

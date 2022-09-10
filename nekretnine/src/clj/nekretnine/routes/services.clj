@@ -11,7 +11,9 @@
    [nekretnine.adrese :as adr]
    [nekretnine.middleware :as middleware]
    [ring.util.http-response :as response]
-   [nekretnine.middleware.formats :as formats]))
+   [nekretnine.middleware.formats :as formats]
+   [nekretnine.auth :as auth]
+   [spec-tools.data-spec :as ds]))
 
 
 
@@ -82,4 +84,87 @@
 ;;else
                 (response/internal-server-error
                  {:errors
-                  {:server-error ["Neuspesno cuvanje adrese"]}}))))))}}]])
+                  {:server-error ["Neuspesno cuvanje adrese"]}}))))))}}]
+
+   ["/login"
+    {:post {:parameters
+            {:body
+             {:login string?
+              :lozinka string?}}
+            :responses
+            {200
+             {:body
+              {:identity
+               {:login string?
+                :created_at inst?}}}
+             401
+             {:body
+              {:message string?}}}
+            :handler
+            (fn [{{{:keys [login lozinka]} :body} :parameters
+                  session :session}]
+              (if-some [user (auth/authenticate-user login lozinka)]
+                (->
+                 (response/ok
+                  {:identity user})
+                 (assoc :session (assoc session
+                                        :identity
+                                        user)))
+                (response/unauthorized
+                 {:message "Netacan login ili lozinka."})))}}]
+   ["/register"
+    {:post {:parameters
+            {:body
+             {:login string?
+              :lozinka string?
+              :confirm string?}}
+            :responses
+            {200
+             {:body
+              {:message string?}}
+             400
+             {:body
+              {:message string?}}
+             409
+             {:body
+              {:message string?}}}
+            :handler
+            (fn [{{{:keys [login lozinka confirm]} :body} :parameters}]
+              (if-not (= lozinka confirm)
+                (response/bad-request
+                 {:message
+                  "lozinka and Confirm do not match."})
+                (try
+                  (auth/create-user! login lozinka)
+                  (response/ok
+                   {:message
+                    "User registration successful. Please log in."})
+                  (catch clojure.lang.ExceptionInfo e
+                    (if (= (:nekretnine/error-id (ex-data e))
+                           ::auth/duplicate-user)
+                      (response/conflict
+                       {:message
+                        "Registration failed! User with login already exists!"})
+                      (throw e))))))}}]
+   ["/logout"
+    {:post {:handler
+            (fn [_]
+              (->
+               (response/ok)
+               (assoc :session nil)))}}]
+   ["/session"
+    {:get
+     {:responses
+      {200
+       {:body
+        {:session
+         {:identity
+          (ds/maybe
+           {:login string?
+            :created_at inst?})}}}}
+      :handler
+      (fn [{{:keys [identity]} :session}]
+        (response/ok {:session
+                      {:identity
+                       (not-empty
+                        (select-keys identity [:login :created_at]))}}))}}]])
