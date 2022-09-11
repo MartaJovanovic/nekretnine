@@ -434,9 +434,12 @@
 
 
 
-(defn errors-component [id]
+(defn errors-component [id & [message]]
   (when-let [error @(rf/subscribe [:form/error id])]
-    [:div.notification.is-danger (string/join error)]))
+    [:div.notification.is-danger (if message
+                                   message
+                                   (string/join error))]))
+
 
 
 
@@ -444,6 +447,8 @@
 
 (defn adresa-form []
   [:div
+   [errors-component :server-error]
+   [errors-component :unauthorized "Please log in before posting."]
    [errors-component  :server-error]
    [:div.field
     [:label.label {:for :ime} "Ime"]
@@ -488,7 +493,18 @@
        [:div.columns>div.column
         [reload-adrese-button]]
        [:div.columns>div.column
-        [adresa-form]]])))
+        (case @(rf/subscribe [:auth/user-state])
+          :loading
+          [:div {:style {:width "5em"}}
+           [:progress.progress.is-dark.is-small {:max 100} "30%"]]
+          :authenticated
+          [adresa-form]
+          :anonymous
+          [:div.notification.is-clearfix
+           [:span "Log in or create an account to post a message!"]
+           [:div.buttons.is-pulled-right
+            [login-button]
+            [register-button]]])]])))
 
 (defn navbar []
   (let [burger-active (r/atom false)]

@@ -4,6 +4,19 @@
    [buddy.hashers :as hashers]
    [next.jdbc :as jdbc]))
 
+
+(defn identity->roles [identity]
+  (cond-> #{:any}
+    (some? identity) (conj :authenticated)))
+(def roles
+  {:adrese/create! #{:authenticated}
+   :auth/login #{:any}
+   :auth/logout #{:any}
+   :account/register #{:any}
+   :session/get #{:any}
+   :adrese/list #{:any}
+   :swagger/swagger #{:any}})
+
 (defn create-user! [login lozinka]
   (jdbc/with-transaction [t-conn db/*db*]
     (if-not (empty? (db/get-user-for-auth* t-conn {:login login}))
@@ -18,3 +31,6 @@
   (let [{hashed :lozinka :as user} (db/get-user-for-auth* {:login login})]
     (when (hashers/check lozinka hashed)
       (dissoc user :lozinka))))
+
+
+

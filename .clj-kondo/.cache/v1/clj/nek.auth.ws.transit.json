@@ -1,0 +1,1 @@
+["^ ","~$authorized?",["^ ","~:row",5,"~:col",1,"~:fixed-arities",["~#set",[2]],"~:name","^0","~:ns","~$nek.auth.ws","~:top-ns","^7","~:arities",["^ ","~i2",["^ ","~:ret","~:boolean","~:arglist-str","[roles-by-id adr]"]]],"~:filename","C:\\Users\\jovan\\folder\\nekretnine\\src\\clj\\nekretnine\\auth\\ws.clj"]

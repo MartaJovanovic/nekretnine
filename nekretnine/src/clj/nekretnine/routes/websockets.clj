@@ -7,7 +7,9 @@
             [mount.core :refer [defstate]]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]
-            [nekretnine.session :as session]))
+            [nekretnine.session :as session]
+            [nekretnine.auth :as auth]
+            [nekretnine.auth.ws :refer [authorized?]]))
 
 
 (defstate socket
@@ -41,7 +43,6 @@
    :id id})
 
 
-
 (defmethod handle-adresa :adrese/create!
   [{:keys [?data uid session] :as adresa}]
   (let [response (try
@@ -66,17 +67,27 @@
         {:success true}))))
 
 
-
 (defn receive-adresa! [{:keys [id ?reply-fn ring-req]
                         :as adresa}]
-  (log/debug "Dobijena adresa: " id)
-  (let [reply-fn (or ?reply-fn (fn [_]))
-        session (session/read-session ring-req)
-        response (-> adresa
-                     (assoc :session session)
-                     handle-adresa)]
-    (when response
-      (reply-fn response))))
+  (case id
+    :chsk/bad-package (log/debug "Bad Package:\n" adresa)
+    :chsk/bad-event (log/debug "Bad Event: \n" adresa)
+    :chsk/uidport-open (log/trace (:event adresa))
+    :chsk/uidport-close (log/trace (:event adresa))
+    :chsk/ws-ping nil
+;; ELSE
+    (let [reply-fn (or ?reply-fn (fn [_]))
+          session (session/read-session ring-req)
+          adresa (-> adresa
+                     (assoc :session session))]
+      (log/debug "Got message with id: " id)
+      (if (authorized? auth/roles adresa)
+        (when-some [response (handle-adresa adresa)]
+          (reply-fn response))
+        (do
+          (log/info "Unauthorized message: " id)
+          (reply-fn {:message "You are not authorized to perform this action!"
+                     :errors {:unauthorized true}}))))))
 
 
 
@@ -84,31 +95,30 @@
 
 
 
+;; (defn handle-adresa! [channel ws-adresa]
+;;   (let [adresa (edn/read-string ws-adresa)
+;;         response (try
+;;                    (adr/save-adresa! adresa)
+;;                    (assoc adresa :timestamp (java.util.Date.))
+;;                    (catch Exception e
+;;                      (let [{id :nekretnine/error-id
+;;                             errors :errors} (ex-data e)]
+;;                        (case id
+;;                          :validation
+;;                          {:errors errors}
+;; ;;else
+;;                          {:errors
+;;                           {:server-error ["Neuspesno cuvanje adrese"]}}))))]
+;;     (if (:errors response)
+;;       (http-kit/send! channel (pr-str response))
+;;       (doseq [channel @channels]
+;;         (http-kit/send! channel (pr-str response))))))
 
-(defn handle-adresa! [channel ws-adresa]
-  (let [adresa (edn/read-string ws-adresa)
-        response (try
-                   (adr/save-adresa! adresa)
-                   (assoc adresa :timestamp (java.util.Date.))
-                   (catch Exception e
-                     (let [{id :nekretnine/error-id
-                            errors :errors} (ex-data e)]
-                       (case id
-                         :validation
-                         {:errors errors}
-;;else
-                         {:errors
-                          {:server-error ["Neuspesno cuvanje adrese"]}}))))]
-    (if (:errors response)
-      (http-kit/send! channel (pr-str response))
-      (doseq [channel @channels]
-        (http-kit/send! channel (pr-str response))))))
-
-(defn handler [request]
-  (http-kit/with-channel request channel
-    (connect! channel)
-    (http-kit/on-close channel (partial disconnect! channel))
-    (http-kit/on-receive channel (partial handle-adresa! channel))))
+;; (defn handler [request]
+;;   (http-kit/with-channel request channel
+;;     (connect! channel)
+;;     (http-kit/on-close channel (partial disconnect! channel))
+;;     (http-kit/on-receive channel (partial handle-adresa! channel))))
 
 (defstate channel-router
   :start (sente/start-chsk-router!

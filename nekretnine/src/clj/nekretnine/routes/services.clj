@@ -13,7 +13,9 @@
    [ring.util.http-response :as response]
    [nekretnine.middleware.formats :as formats]
    [nekretnine.auth :as auth]
-   [spec-tools.data-spec :as ds]))
+   [spec-tools.data-spec :as ds]
+   [nekretnine.auth.ring :refer [wrap-authorized get-roles-from-match]]
+   [clojure.tools.logging :as log]))
 
 
 
@@ -34,7 +36,25 @@
 ;; coercing request parameters
                  coercion/coerce-request-middleware
 ;; multipart params
-                 multipart/multipart-middleware]
+                 multipart/multipart-middleware
+                 (fn [handler]
+                   (wrap-authorized
+                    handler
+                    (fn handle-unauthorized [req]
+                      (let [route-roles (get-roles-from-match req)]
+                        (log/debug
+                         "Roles for route: "
+                         (:uri req)
+                         route-roles)
+                        (log/debug "User is unauthorized!"
+                                   (-> req
+                                       :session
+                                       :identity
+                                       :roles))
+                        (response/forbidden
+                         {:message
+                          (str "User must have one of the following roles: "
+                               route-roles)})))))]
     :muuntaja formats/instance
     :coercion spec-coercion/coercion
     :swagger {:id ::api}}
@@ -45,7 +65,8 @@
      {:get (swagger-ui/create-swagger-ui-handler
             {:url "/api/swagger.json"})}]]
    ["/adrese"
-    {:get
+    {::auth/roles (auth/roles :adrese/list)
+     :get
      {:responses
       {200
        {:body ;; Data Spec for response body
@@ -58,7 +79,8 @@
       (fn [_]
         (response/ok (adr/adresa-list)))}}]
    ["/adresa"
-    {:post
+    {::auth/roles (auth/roles :adrese/create!)
+     :post
      {:parameters
       {:body ;; Data Spec for Request body parameters
        {:ime string?
@@ -88,7 +110,8 @@
                  {:errors
                   {:server-error ["Netacan login ili lozinka"]}}))))))}}]
    ["/login"
-    {:post {:parameters
+    {::auth/roles (auth/roles :auth/login)
+     :post {:parameters
             {:body
              {:login string?
               :lozinka string?}}
@@ -114,7 +137,8 @@
                 (response/unauthorized
                  {:message "Netacan login ili lozinka."})))}}]
    ["/register"
-    {:post {:parameters
+    {::auth/roles (auth/roles :account/register)
+     :post {:parameters
             {:body
              {:login string?
               :lozinka string?
@@ -148,13 +172,15 @@
                         "Registration failed! User with login already exists!"})
                       (throw e))))))}}]
    ["/logout"
-    {:post {:handler
+    {::auth/roles (auth/roles :auth/logout)
+     :post {:handler
             (fn [_]
               (->
                (response/ok)
                (assoc :session nil)))}}]
    ["/session"
-    {:get
+    {::auth/roles (auth/roles :session/get)
+     :get
      {:responses
       {200
        {:body
