@@ -6,7 +6,8 @@
             [nekretnine.middleware :as middleware]
             [mount.core :refer [defstate]]
             [taoensso.sente :as sente]
-            [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]))
+            [taoensso.sente.server-adapters.http-kit :refer [get-sch-adapter]]
+            [nekretnine.session :as session]))
 
 
 (defstate socket
@@ -40,10 +41,11 @@
    :id id})
 
 
+
 (defmethod handle-adresa :adrese/create!
-  [{:keys [?data uid] :as adresa}]
+  [{:keys [?data uid session] :as adresa}]
   (let [response (try
-                   (adr/save-adresa! ?data)
+                   (adr/save-adresa! (:identity session) ?data)
                    (assoc ?data :timestamp (java.util.Date.))
                    (catch Exception e
                      (let [{id :nekretnine/error-id
@@ -65,12 +67,17 @@
 
 
 
-(defn receive-adresa! [{:keys [id ?reply-fn]
+(defn receive-adresa! [{:keys [id ?reply-fn ring-req]
                         :as adresa}]
   (log/debug "Dobijena adresa: " id)
-  (let [reply-fn (or ?reply-fn (fn [_]))]
-    (when-some [response (handle-adresa adresa)]
+  (let [reply-fn (or ?reply-fn (fn [_]))
+        session (session/read-session ring-req)
+        response (-> adresa
+                     (assoc :session session)
+                     handle-adresa)]
+    (when response
       (reply-fn response))))
+
 
 
 

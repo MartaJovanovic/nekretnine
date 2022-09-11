@@ -1,9 +1,10 @@
--- :name save-adresa! :! :n
+-- :name save-adresa! :<! :1
 -- :doc creates a new adresa using the ime and adresa keys
 INSERT INTO oglasi
-    (ime, adresa)
+    (vlasnik, ime, adresa)
 VALUES
-    (:ime, :adresa)
+    (:vlasnik, :ime, :adresa)
+RETURNING *;
 -- :name get-adrese :? :*
 -- :doc selects all available adresas
 SELECT *

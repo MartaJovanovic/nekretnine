@@ -407,16 +407,23 @@
       (rf/dispatch [:form/clear-fields response]))))
 
 
-
 (defn adresa-list [adrese]
-  (println adrese)
   [:ul.adrese
-   (for [{:keys [timestamp adresa ime]} @adrese]
+   (for [{:keys [timestamp adresa ime vlasnik]} @adrese]
      ^{:key timestamp}
      [:li
       [:time (.toLocaleString timestamp)]
       [:p adresa]
-      [:p " - " ime]])])
+      [:p " - " ime
+;; Add the vlasnik (e.g. <@username>)
+       " <"
+       (if vlasnik
+         (str vlasnik)
+         [:span.is-italic "account not found"])
+       ">"]])])
+
+
+
 
 
 

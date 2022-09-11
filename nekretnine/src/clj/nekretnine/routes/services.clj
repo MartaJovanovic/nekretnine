@@ -71,12 +71,14 @@
        500
        {:errors map?}}
       :handler
-      (fn [{{params :body} :parameters}]
+      (fn [{{params :body} :parameters
+            {:keys [identity]} :session}]
         (try
-          (adr/save-adresa! params)
-          (response/ok {:status :ok})
+          (->> (adr/save-adresa! identity params)
+               (assoc {:status :ok} :post)
+               (response/ok))
           (catch Exception e
-            (let [{id :nekretnine/error-id
+            (let [{id :guestbook/error-id
                    errors :errors} (ex-data e)]
               (case id
                 :validation
@@ -84,8 +86,7 @@
 ;;else
                 (response/internal-server-error
                  {:errors
-                  {:server-error ["Neuspesno cuvanje adrese"]}}))))))}}]
-
+                  {:server-error ["Netacan login ili lozinka"]}}))))))}}]
    ["/login"
     {:post {:parameters
             {:body

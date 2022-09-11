@@ -6,9 +6,12 @@
 (defn adresa-list []
   {:adrese (vec (db/get-adrese))})
 
-(defn save-adresa! [adresa]
+(defn save-adresa! [{:keys [login]} adresa]
   (if-let [errors (validate-adresa adresa)]
     (throw (ex-info "Adresa nije validna"
-                    {:nekretnine/error-id :validation
+                    {:guestbook/error-id :validation
                      :errors errors}))
-    (db/save-adresa! adresa)))
+    (db/save-adresa! (assoc adresa :vlasnik login))))
+
+;; (defn adrese-by-vlasnik [vlasnik]
+;;   {:adrese (vec (db/get-adrese-by-vlasnik {:vlasnik vlasnik}))})
