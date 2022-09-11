@@ -45,39 +45,55 @@
                         (log/debug
                          "Roles for route: "
                          (:uri req)
-                         route-roles)
-                        (log/debug "User is unauthorized!"
-                                   (-> req
-                                       :session
-                                       :identity
-                                       :roles))
+                         route-roles) (log/debug "User is unauthorized!"
+                                                 (-> req
+                                                     :session
+                                                     :identity
+                                                     :roles))
                         (response/forbidden
                          {:message
                           (str "User must have one of the following roles: "
                                route-roles)})))))]
+
     :muuntaja formats/instance
     :coercion spec-coercion/coercion
     :swagger {:id ::api}}
-   ["" {:no-doc true}
+   ["" {:no-doc true
+        ::auth/roles (auth/roles :swagger/swagger)}
     ["/swagger.json"
      {:get (swagger/create-swagger-handler)}]
     ["/swagger-ui*"
      {:get (swagger-ui/create-swagger-ui-handler
             {:url "/api/swagger.json"})}]]
    ["/adrese"
-    {::auth/roles (auth/roles :adrese/list)
-     :get
-     {:responses
-      {200
-       {:body ;; Data Spec for response body
-        {:adrese
-         [{:id pos-int?
-           :ime string?
-           :adresa string?
-           :timestamp inst?}]}}}
-      :handler
-      (fn [_]
-        (response/ok (adr/adresa-list)))}}]
+    {::auth/roles (auth/roles :adrese/list)}
+    ["" {:get
+         {:responses
+          {200
+           {:body ;; Data Spec for response body
+            {:adrese
+             [{:id pos-int?
+               :ime string?
+               :adresa string?
+               :timestamp inst?}]}}}
+          :handler
+          (fn [_]
+            (response/ok (adr/adresa-list)))}}]
+    ["/by/:author"
+     {:get
+      {:parameters {:path {:author string?}}
+       :responses
+       {200
+        {:body ;; Data Spec for response body
+         {:adrese
+          [{:id pos-int?
+            :ime string?
+            :adresa string?
+            :timestamp inst?}]}}}
+       :handler
+       (fn [{{{:keys [vlasnik]} :path} :parameters}]
+         (response/ok (adr/adrese-by-vlasnik vlasnik)))}}]]
+
    ["/adresa"
     {::auth/roles (auth/roles :adrese/create!)
      :post
@@ -100,7 +116,7 @@
                (assoc {:status :ok} :post)
                (response/ok))
           (catch Exception e
-            (let [{id :guestbook/error-id
+            (let [{id :nekretnine/error-id
                    errors :errors} (ex-data e)]
               (case id
                 :validation
@@ -108,7 +124,8 @@
 ;;else
                 (response/internal-server-error
                  {:errors
-                  {:server-error ["Netacan login ili lozinka"]}}))))))}}]
+                  {:server-error ["Failed to save message!"]}}))))))}}]
+
    ["/login"
     {::auth/roles (auth/roles :auth/login)
      :post {:parameters
@@ -135,7 +152,7 @@
                                         :identity
                                         user)))
                 (response/unauthorized
-                 {:message "Netacan login ili lozinka."})))}}]
+                 {:message "Incorrect login or lozinka."})))}}]
    ["/register"
     {::auth/roles (auth/roles :account/register)
      :post {:parameters

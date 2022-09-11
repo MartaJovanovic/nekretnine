@@ -21,3 +21,8 @@ VALUES
 SELECT *
 FROM users
 WHERE login = :login
+-- :name get-adrese-by-vlasnik :? :*
+-- :doc svi oglasi vlasnika
+SELECT *
+from oglasi
+WHERE vlasnik = :vlasnik

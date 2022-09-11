@@ -13,5 +13,5 @@
                      :errors errors}))
     (db/save-adresa! (assoc adresa :vlasnik login))))
 
-;; (defn adrese-by-vlasnik [vlasnik]
-;;   {:adrese (vec (db/get-adrese-by-vlasnik {:vlasnik vlasnik}))})
+(defn adrese-by-vlasnik [vlasnik]
+  {:adrese (vec (db/get-adrese-by-vlasnik {:vlasnik vlasnik}))})

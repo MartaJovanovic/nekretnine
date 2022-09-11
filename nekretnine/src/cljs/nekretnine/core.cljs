@@ -6,7 +6,10 @@
              [clojure.string :as string]
              [nekretnine.validation :refer [validate-adresa]]
              [nekretnine.websockets :as ws]
-             [mount.core :as mount]))
+             [mount.core :as mount]
+             [reitit.coercion.spec :as reitit-spec]
+             [reitit.frontend :as rtf]
+             [reitit.frontend.easy :as rtfe]))
 
 
 (rf/reg-fx
@@ -241,6 +244,16 @@
      user :authenticated
      :else :anonymous)))
 
+(rf/reg-event-db
+ :router/navigated
+ (fn [db [_ new-match]]
+   (assoc db :router/current-route new-match)))
+(rf/reg-sub
+ :router/current-route
+ (fn [db]
+   (:router/current-route db)))
+
+
 
 
 (defn modal-card [id title body footer]
@@ -418,7 +431,7 @@
 ;; Add the vlasnik (e.g. <@username>)
        " <"
        (if vlasnik
-         (str vlasnik)
+         [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
          [:span.is-italic "account not found"])
        ">"]])])
 
@@ -544,16 +557,49 @@
               [login-button]
               [register-button]])]]]]])))
 
+(defn page [{{:keys [view name]} :data
+             path :path}]
+  [:section.section>div.container
+   (if view
+     [view]
+     [:div "No view specified for route: " name " (" path ")"])])
+
 
 (defn app []
-  [:div.app
-   [navbar]
-   [:section.section
-    [:div.container
-     [home]]]])
+  (let [current-route @(rf/subscribe [:router/current-route])]
+    [:div.app
+     [navbar]
+     [page current-route]]))
+
+(defn vlasnik []
+  [:div
+   [:p "This page hasn't been implemented yet!"]
+   [:a {:href "/"} "Return home"]])
 
 
 
+(def routes
+  ["/"
+   [""
+    {:name ::home
+     :view home}]
+   ["user/:user"
+    {:name ::vlasnik
+     :view vlasnik}]])
+
+
+(def router
+  (rtf/router
+   routes
+   {:data {:coercion reitit-spec/coercion}}))
+
+(defn init-routes! []
+  (rtfe/start!
+   router
+   (fn [new-match]
+     (when new-match
+       (rf/dispatch [:router/navigated new-match])))
+   {:use-fragment false}))
 
 
 
@@ -561,8 +607,10 @@
 (defn ^:dev/after-load mount-components []
   (rf/clear-subscription-cache!)
   (.log js/console "Mounting Components...")
+  (init-routes!)
   (dom/render [#'app] (.getElementById js/document "content"))
   (.log js/console "Components Mounted!"))
+
 
 
 (defn init! []
