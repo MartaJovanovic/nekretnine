@@ -4,7 +4,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [nekretnine.validation :refer [validate-adresa]]
-   [nekretnine.components :refer [text-input textarea-input image]]
+   [nekretnine.components :refer [text-input textarea-input image md]]
    [reagent.dom :as dom]
    [reitit.frontend.easy :as rtfe]))
 
@@ -177,54 +177,86 @@
        "Refresuj")]))
 
 
+(defn adresa
+  ([m] [adresa m {}])
+  ([{:keys [id timestamp adresa ime vlasnik avatar] :as m}
+    {:keys [include-link?]
+     :or {include-link? true}}]
+   [:article.media
+    [:figure.media-left
+     [image (or avatar "/img/avatar-default.png") 128 128]]
+    [:div.media-content>div.content
+     [:time (.toLocaleString timestamp)]
+     [md adresa]
+     (when include-link?
+       [:p>a {:on-click
+              (fn [_]
+                (let [{{:keys [ime]} :data
+                       {:keys [path query]} :parameters}
+                      @(rf/subscribe [:router/current-route])]
+                  (rtfe/replace-state ime path (assoc query :post id)))
+                (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
+        "View Post"])
+     [:p " - " ime
+      " <"
+
+      [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
+      ">"]]]))
+
+
+(defn adresa-preview [m]
+  (r/with-let [expanded (r/atom false)]
+    [:<>
+     [:button.button.is-secondary.is-fullwidth
+      {:on-click #(swap! expanded not)}
+      (if @expanded
+        "Hide Preview"
+        "Show Preview")]
+     (when @expanded
+       [:ul.adrese
+        {:style
+         {:margin-left 0}}
+        [:li
+         [adresa m
+          {:include-link? false}]]])]))
 
 
 
 (defn adresa-form []
-  [:div
-   [errors-component :server-error]
-   [errors-component :unauthorized "Please log in before posting."]
-   [:div.field
-    [:label.label {:for :ime} "Ime"]
-    [errors-component :ime]
-    [text-input {:attrs {:name :ime}
-                 :value (rf/subscribe [:form/field :ime])
-                 :on-save #(rf/dispatch [:form/set-field :ime %])}]]
-   [:div.field
-    [:label.label {:for :adresa} "Adresa"]
-    [errors-component :adresa]
-    [textarea-input
-     {:attrs {:name :adresa}
-      :value (rf/subscribe [:form/field :adresa])
-      :on-save #(rf/dispatch [:form/set-field :adresa %])}]]
-   [:input.button.is-primary
-    {:type :submit
-     :disabled @(rf/subscribe [:form/validation-errors?])
-     :on-click  #(rf/dispatch [:adrese/send!
-                               @(rf/subscribe [:form/fields])])
-     :value "Dodaj"}]])
-
-
-(defn adresa [{:keys [id timestamp adresa ime vlasnik avatar] :as m}]
-  [:article.media
-   [:figure.media-left
-    [image (or avatar "/img/avatar-default.png") 128 128]]
-   [:div.media-content>div.content
-    [:time (.toLocaleString timestamp)]
-    [:p adresa]
-    [:p " - " ime
-     " <"
-     (if vlasnik
-       [:a {:href (str "/user/" vlasnik)} (str  vlasnik)]
-       [:span.is-italic "account not found"])
-     ">"]
-    [:p>a {:on-click (fn [_]
-                       (let [{{:keys [ime]} :data
-                              {:keys [path query]} :parameters}
-                             @(rf/subscribe [:router/current-route])]
-                         (rtfe/replace-state ime path (assoc query :post id)))
-                       (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
-     "View Post"]]])
+  [:div.card
+   [:div.card-header>p.card-header-title
+    "Objavi"]
+   (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
+     [:div.card-content
+      [adresa-preview {:adresa @(rf/subscribe [:form/field :adresa])
+                       :id -1
+                       :timestamp (js/Date.)
+                       :ime @(rf/subscribe [:form/field :ime])
+                       :author login
+                       :avatar (:avatar profile)}]
+      [errors-component :server-error]
+      [errors-component :unauthorized "Please log in before posting."]
+      [:div.field
+       [:label.label {:for :name} "Name"]
+       [errors-component :ime]
+       [text-input {:attrs {:name :ime}
+                    :save-timeout 1000
+                    :value (rf/subscribe [:form/field :ime])
+                    :on-save #(rf/dispatch [:form/set-field :ime %])}]]
+      [:div.field
+       [:label.label {:for :adresa} "Adresa"]
+       [errors-component :adresa]
+       [textarea-input
+        {:attrs {:name :adresa}
+         :save-timeout 1000
+         :value (rf/subscribe [:form/field :adresa])
+         :on-save #(rf/dispatch [:form/set-field :adresa %])}]]
+      [:input.button.is-primary.is-fullwidth
+       {:type :submit
+        :disabled @(rf/subscribe [:form/validation-errors?])
+        :on-click #(rf/dispatch [:adrese/send!
+                                 @(rf/subscribe [:form/fields])])
+        :value "Dodaj"}]])])
 
 
 (defn adr-li [m adr-id]
