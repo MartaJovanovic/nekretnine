@@ -40,7 +40,8 @@
                  [day8.re-frame/re-frame-10x "1.2.2"]
                  [com.taoensso/sente "1.16.0"]
                  [org.postgresql/postgresql "42.2.18"]
-                 [buddy "2.0.0"]]
+                 [buddy "2.0.0"]
+                 [metosin/jsonista "0.3.6"]]
 
 
 

@@ -3,7 +3,8 @@
    #?@(:clj [[nekretnine.layout :as layout]
              [nekretnine.middleware :as middleware]]
        :cljs [[nekretnine.views.home :as home]
-              [nekretnine.views.vlasnik :as vlasnik]])))
+              [nekretnine.views.vlasnik :as vlasnik]
+              [nekretnine.views.profile :as profile]])))
 #?(:clj
    (defn home-page [request]
      (layout/render
@@ -18,9 +19,17 @@
     (merge
      {:name ::home}
      #?(:cljs
-        {:view #'home/home}))]
+        {:controllers home/home-controllers
+         :view #'home/home}))]
    ["/user/:user"
     (merge
      {:name ::vlasnik}
-     #?(:cljs {:view #'vlasnik/vlasnik}))]])
+     #?(:cljs  {:controllers vlasnik/vlasnik-controllers
+                :view #'vlasnik/vlasnik}))]
+   ["/my-account/edit-profile"
+    (merge
+     {:name ::profile}
+     #?(:cljs
+        {:controllers profile/profile-controllers
+         :view #'profile/profile}))]])
 

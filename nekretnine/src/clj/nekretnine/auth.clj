@@ -10,12 +10,16 @@
     (some? identity) (conj :authenticated)))
 (def roles
   {:adrese/create! #{:authenticated}
+   :vlasnik/get #{:any}
+   :account/set-profile! #{:authenticated}
    :auth/login #{:any}
    :auth/logout #{:any}
    :account/register #{:any}
    :session/get #{:any}
    :adrese/list #{:any}
-   :swagger/swagger #{:any}})
+   :swagger/swagger #{:any}
+   :media/get #{:any}
+   :media/upload #{:authenticated}})
 
 (defn create-user! [login lozinka]
   (jdbc/with-transaction [t-conn db/*db*]

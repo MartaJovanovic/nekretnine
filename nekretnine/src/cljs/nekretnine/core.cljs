@@ -13,14 +13,14 @@
              [mount.core :as mount]
              [reitit.coercion.spec :as reitit-spec]
              [reitit.frontend :as rtf]
-             [reitit.frontend.easy :as rtfe]))
+             [reitit.frontend.easy :as rtfe]
+             [reitit.frontend.controllers :as rtfc]))
 
 (rf/reg-event-fx
  :app/initialize
  (fn [_ _]
-   {:db {:adrese/loading? true
-         :session/loading? true}
-    :dispatch-n [[:session/load] [:adrese/load]]}))
+   {:db {:session/loading? true}
+    :dispatch [:session/load]}))
 
 (def router
   (rtf/router
@@ -34,12 +34,19 @@
  :router/current-route
  (fn [db]
    (:router/current-route db)))
+
 (defn init-routes! []
   (rtfe/start!
    router
    (fn [new-match]
      (when new-match
-       (rf/dispatch [:router/navigated new-match])))
+       (let [{controllers :controllers}
+             @(rf/subscribe [:router/current-route])
+             new-match-with-controllers
+             (assoc new-match
+                    :controllers
+                    (rtfc/apply-controllers controllers new-match))]
+         (rf/dispatch [:router/navigated new-match-with-controllers]))))
    {:use-fragment false}))
 
 
@@ -65,7 +72,12 @@
          [:div.navbar-start
           [:a.navbar-item
            {:href "/"}
-           "Home"]]
+           "Home"]
+          (when (= @(rf/subscribe [:auth/user-state]) :authenticated)
+            [:a.navbar-item
+             {:href (rtfe/href :nekretnine.routes.app/vlasnik
+                               {:user (:login @(rf/subscribe [:auth/user]))})}
+             "My Posts"])]
          [:div.navbar-end
           [:div.navbar-item
            (case @(rf/subscribe [:auth/user-state])
@@ -99,8 +111,10 @@
   (init-routes!)
   (dom/render [#'app] (.getElementById js/document "content"))
   (.log js/console "Components Mounted!"))
+
 (defn init! []
   (.log js/console "Initializing App...")
   (mount/start)
-  (rf/dispatch [:app/initialize])
+  (rf/dispatch-sync [:app/initialize])
   (mount-components))
+

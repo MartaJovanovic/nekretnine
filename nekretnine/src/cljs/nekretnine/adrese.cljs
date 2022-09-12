@@ -3,13 +3,17 @@
    [clojure.string :as string]
    [reagent.core :as r]
    [re-frame.core :as rf]
-   [nekretnine.validation :refer [validate-adresa]]))
+   [nekretnine.validation :refer [validate-adresa]]
+   [nekretnine.components :refer [text-input textarea-input]]))
 
 
 (rf/reg-event-fx
  :adrese/load
  (fn [{:keys [db]} _]
-   {:db (assoc db :adrese/loading? true)
+   {:db (assoc db
+               :adrese/loading? true
+               :adrese/list nil
+               :adrese/filter nil)
     :ajax/get {:url "/api/adrese"
                :success-path [:adrese]
                :success-event [:adrese/set]}}))
@@ -31,10 +35,6 @@
        (assoc :adrese/loading? false
               :adrese/list adrese))))
 
-(rf/reg-event-db
- :adrese/add
- (fn [db [_ adrese]]
-   (update db :adrese/list conj adrese)))
 
 (rf/reg-event-db
  :form/set-field
@@ -114,6 +114,49 @@
                :callback-event [:adrese/send!-called-back]}}))
 
 
+(rf/reg-event-fx
+ :adrese/load-by-vlasnik
+ (fn [{:keys [db]} [_ vlasnik]]
+   {:db (assoc db
+               :adrese/loading? true
+               :adrese/filter {:vlasnik vlasnik}
+               :adrese/list nil)
+    :ajax/get {:url (str "/api/adrese/by/" vlasnik)
+               :success-path [:adrese]
+               :success-event [:adrese/set]}}))
+
+
+
+(defn add-adresa? [filter-map adr]
+  (every?
+   (fn [[k matcher]]
+     (let [v (get adr k)]
+       (cond
+         (set? matcher)
+         (matcher v)
+         (fn? matcher)
+         (matcher v)
+         :else
+         (= matcher v))))
+   filter-map))
+
+(rf/reg-event-db
+ :adrese/add
+ (fn [db [_ adrese]]
+   (if (add-adresa? (:adrese/filter db) adrese)
+     (update db :adrese/list conj adrese)
+     db)))
+
+(defn adrese-list-placeholder []
+  [:ul.adrese
+   [:li
+    [:p "Ucitavanje adresa..."]
+    [:div {:style {:width "10em"}}
+     [:progress.progress.is-dark {:max 100} "30%"]]]])
+
+
+
+
 (defn errors-component [id & [message]]
   (when-let [error @(rf/subscribe [:form/error id])]
     [:div.notification.is-danger (if message
@@ -147,39 +190,6 @@
          [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
          [:span.is-italic "account not found"])
        ">"]])])
-
-
-
-(defn text-input  [{val :value
-                    attrs :attrs
-                    :keys [on-save]}]
-  (let [draft (r/atom nil)
-        value (r/track #(or @draft @val ""))]
-    (fn []
-      [:input.input
-       (merge attrs
-              {:type :text
-               :on-focus #(reset! draft (or @val ""))
-               :on-blur (fn []
-                          (on-save (or @draft ""))
-                          (reset! draft nil))
-               :on-change #(reset! draft (.. % -target -value))
-               :value @value})])))
-
-(defn textarea-input  [{val :value
-                        attrs :attrs
-                        :keys [on-save]}]
-  (let [draft (r/atom nil)
-        value (r/track #(or @draft @val ""))]
-    (fn []
-      [:textarea.textarea
-       (merge attrs
-              {:on-focus #(reset! draft (or @val ""))
-               :on-blur (fn []
-                          (on-save (or @draft ""))
-                          (reset! draft nil))
-               :on-change #(reset! draft (.. % -target -value))
-               :value @value})])))
 
 
 

@@ -9,8 +9,10 @@
     (fn []
       [:div.content>div.columns.is-centered>div.column.is-two-thirds
        [:div.columns>div.column
-        [:h3 "adrese"]
-        [adr/adresa-list adrese]]
+        [:h3 "Adrese"]
+        (if @(rf/subscribe [:adrese/loading?])
+          [adr/adrese-list-placeholder]
+          [adr/adresa-list adrese])]
        [:div.columns>div.column
         [adr/reload-adrese-button]]
        [:div.columns>div.column
@@ -26,3 +28,6 @@
            [:div.buttons.is-pulled-right
             [auth/login-button]
             [auth/register-button]]])]])))
+
+(def home-controllers
+  [{:start (fn [_] (rf/dispatch [:adrese/load]))}])

@@ -4,7 +4,8 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [nekretnine.modals :as m]
-   [ajax.core :refer [POST]]))
+   [ajax.core :refer [POST]]
+   [reitit.frontend.easy :as rtfe]))
 
 (rf/reg-event-fx
  :session/load
@@ -164,6 +165,9 @@
    {:on-click #(POST "/api/logout"
                  {:handler (fn [_] (rf/dispatch [:auth/handle-logout]))})}
    "Log Out"])
+
+
 (defn nameplate [{:keys [login]}]
-  [:button.button.is-primary
+  [:a.button.is-primary
+   {:href (rtfe/href :nekretnine.routes.app/profile)}
    login])
