@@ -7,9 +7,16 @@ VALUES
 RETURNING *;
 -- :name get-adrese :? :*
 -- :doc selects all available adresas
-SELECT *
-from oglasi
-
+SELECT
+    p.id as id,
+    p.timestamp as timestamp,
+    p.adresa as adresa,
+    p.ime as ime,
+    p.vlasnik as vlasnik,
+    a.profile->>'avatar'
+as avatar
+from oglasi as p join users as a
+on a.login = p.vlasnik
 -- :name create-user!* :! :n
 -- :doc creates a new user with the provided login and hashed lozinka
 INSERT INTO users

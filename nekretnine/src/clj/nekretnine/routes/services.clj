@@ -79,7 +79,9 @@
              [{:id pos-int?
                :ime string?
                :adresa string?
-               :timestamp inst?}]}}}
+               :timestamp inst?
+               :vlasnik (ds/maybe string?)
+               :avatar (ds/maybe string?)}]}}}
           :handler
           (fn [_]
             (Thread/sleep 500)

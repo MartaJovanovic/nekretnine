@@ -4,7 +4,7 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [nekretnine.validation :refer [validate-adresa]]
-   [nekretnine.components :refer [text-input textarea-input]]))
+   [nekretnine.components :refer [text-input textarea-input image]]))
 
 
 (rf/reg-event-fx
@@ -176,22 +176,6 @@
 
 
 
-(defn adresa-list [adrese]
-  [:ul.adrese
-   (for [{:keys [timestamp adresa ime vlasnik]} @adrese]
-     ^{:key timestamp}
-     [:li
-      [:time (.toLocaleString timestamp)]
-      [:p adresa]
-      [:p " - " ime
-;; Add the vlasnik (e.g. <@username>)
-       " <"
-       (if vlasnik
-         [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
-         [:span.is-italic "account not found"])
-       ">"]])])
-
-
 
 
 (defn adresa-form []
@@ -217,3 +201,25 @@
      :on-click  #(rf/dispatch [:adrese/send!
                                @(rf/subscribe [:form/fields])])
      :value "Dodaj"}]])
+
+
+(defn adresa [{:keys [timestamp adresa ime vlasnik avatar] :as m}]
+  [:article.media
+   [:figure.media-left
+    [image (or avatar "/img/avatar-default.png") 128 128]]
+   [:div.media-content>div.content
+    [:time (.toLocaleString timestamp)]
+    [:p adresa]
+    [:p " - " ime
+     " <"
+     (if vlasnik
+       [:a {:href (str "/user/" vlasnik)} (str  vlasnik)]
+       [:span.is-italic "account not found"])
+     ">"]]])
+
+(defn adresa-list [adrese]
+  [:ul.messages
+   (for [m @adrese]
+     ^{:key (:timestamp m)}
+     [:li
+      [adresa m]])])

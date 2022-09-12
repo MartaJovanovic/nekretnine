@@ -157,6 +157,7 @@
      [image @url 128 128]
      [:div.field.is-grouped
       [:div.control
+       ^{:key @(rf/subscribe [:profile/field-changed? k])}
        [image-uploader
         #(rf/dispatch [:profile/save-media k %])
         "Choose an Avatar..."]]
