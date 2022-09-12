@@ -65,7 +65,8 @@
     (let [{:keys [display-name login]} @(rf/subscribe [::vlasnik])]
       [:h2 display-name " <@" login ">'s Page"])))
 
-(defn vlasnik [{{{:keys [user]} :path} :parameters}]
+(defn vlasnik [{{{:keys [user]} :path
+                 {:keys [post]} :query} :parameters}]
   (let [adrese (rf/subscribe [:adrese/list])
         vlasnik (rf/subscribe [::vlasnik])]
     (fn [{{{:keys [user]} :path} :parameters}]
@@ -84,7 +85,7 @@
              [:h3 "Posts by " display-name " <@" user ">"]
              (if @(rf/subscribe [:adrese/loading?])
                [adrese/adrese-list-placeholder]
-               [adrese/adresa-list adrese])]
+               [adrese/adresa-list adrese post])]
             (when @(rf/subscribe [::is-current-vlasnik?])
               [:div.columns>div.column
                [:h4 "New Post"]

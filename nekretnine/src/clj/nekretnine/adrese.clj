@@ -15,3 +15,6 @@
 
 (defn adrese-by-vlasnik [vlasnik]
   {:adrese (vec (db/get-adrese-by-vlasnik {:vlasnik vlasnik}))})
+
+(defn get-adresa [post-id]
+  (db/get-adresa {:id post-id}))

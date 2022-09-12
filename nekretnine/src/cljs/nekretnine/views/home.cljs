@@ -4,7 +4,7 @@
    [nekretnine.adrese :as adr]
    [nekretnine.auth :as auth]))
 
-(defn home [_]
+(defn home [{{{post :post} :query} :parameters}]
   (let [adrese (rf/subscribe [:adrese/list])]
     (fn []
       [:div.content>div.columns.is-centered>div.column.is-two-thirds
@@ -12,7 +12,7 @@
         [:h3 "Adrese"]
         (if @(rf/subscribe [:adrese/loading?])
           [adr/adrese-list-placeholder]
-          [adr/adresa-list adrese])]
+          [adr/adresa-list adrese post])]
        [:div.columns>div.column
         [adr/reload-adrese-button]]
        [:div.columns>div.column

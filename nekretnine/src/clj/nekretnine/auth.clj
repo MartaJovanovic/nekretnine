@@ -19,7 +19,8 @@
    :adrese/list #{:any}
    :swagger/swagger #{:any}
    :media/get #{:any}
-   :media/upload #{:authenticated}})
+   :media/upload #{:authenticated}
+   :adresa/get #{:any}})
 
 (defn create-user! [login lozinka]
   (jdbc/with-transaction [t-conn db/*db*]

@@ -4,7 +4,9 @@
    [reagent.core :as r]
    [re-frame.core :as rf]
    [nekretnine.validation :refer [validate-adresa]]
-   [nekretnine.components :refer [text-input textarea-input image]]))
+   [nekretnine.components :refer [text-input textarea-input image]]
+   [reagent.dom :as dom]
+   [reitit.frontend.easy :as rtfe]))
 
 
 (rf/reg-event-fx
@@ -203,7 +205,7 @@
      :value "Dodaj"}]])
 
 
-(defn adresa [{:keys [timestamp adresa ime vlasnik avatar] :as m}]
+(defn adresa [{:keys [id timestamp adresa ime vlasnik avatar] :as m}]
   [:article.media
    [:figure.media-left
     [image (or avatar "/img/avatar-default.png") 128 128]]
@@ -215,11 +217,32 @@
      (if vlasnik
        [:a {:href (str "/user/" vlasnik)} (str  vlasnik)]
        [:span.is-italic "account not found"])
-     ">"]]])
+     ">"]
+    [:p>a {:on-click (fn [_]
+                       (let [{{:keys [ime]} :data
+                              {:keys [path query]} :parameters}
+                             @(rf/subscribe [:router/current-route])]
+                         (rtfe/replace-state ime path (assoc query :post id)))
+                       (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
+     "View Post"]]])
 
-(defn adresa-list [adrese]
-  [:ul.messages
-   (for [m @adrese]
-     ^{:key (:timestamp m)}
-     [:li
-      [adresa m]])])
+
+(defn adr-li [m adr-id]
+  (r/create-class
+   {:component-did-mount
+    (fn [this]
+      (when (= adr-id (:id m))
+        (.scrollIntoView (dom/dom-node this))))
+    :reagent-render
+    (fn [_]
+      [:li
+       [adresa m]])}))
+
+(defn adresa-list
+  ([adrese]
+   [adresa-list adrese nil])
+  ([adrese adr-id]
+   [:ul.adrese
+    (for [m @adrese]
+      ^{:key (:timestamp m)}
+      [adr-li m adr-id])]))
