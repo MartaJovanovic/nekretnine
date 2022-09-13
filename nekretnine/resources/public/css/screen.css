@@ -58,6 +58,12 @@ body {
     padding: 18px;
   }
 
+  .card {
+    background-color: #E8C07D;
+    border-color: #614124;
+    border-style: groove;
+    border-inline-width: 50;
+  }
 
 
   .button.is-primary{
@@ -67,9 +73,4 @@ body {
     border-inline-width: 5;
   }
 
-  .card {
-    background-color: #E8C07D;
-    border-color: #614124;
-    border-style: groove;
-    border-inline-width: 50;
-  }
+  
