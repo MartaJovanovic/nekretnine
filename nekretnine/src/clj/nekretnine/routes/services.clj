@@ -140,7 +140,7 @@
 ;;else
                  (response/internal-server-error
                   {:errors
-                   {:server-error ["Failed to save message!"]}}))))))}}]
+                   {:server-error ["Neuspesno cuvanje adrese "]}}))))))}}]
     ["/:post-id"
      {:parameters
       {:path
@@ -161,7 +161,7 @@
                  (response/ok
                   {:adresa post})
                  (response/not-found
-                  {:adresa "Post Not Found"})))}}]
+                  {:adresa "Nije pronadjeno"})))}}]
 
      ["/boost"
       {::auth/roles (auth/roles :adrese/boost!)
@@ -209,7 +209,7 @@
                                         :identity
                                         user)))
                 (response/unauthorized
-                 {:message "Incorrect login or lozinka."})))}}]
+                 {:message "Netacni login ili lozinka."})))}}]
    ["/register"
     {::auth/roles (auth/roles :account/register)
      :post {:parameters
@@ -232,7 +232,7 @@
               (if-not (= lozinka confirm)
                 (response/bad-request
                  {:message
-                  "lozinka and Confirm do not match."})
+                  "lozinka i potvrda lozinke nisu isti"})
                 (try
                   (auth/create-user! login lozinka)
                   (response/ok
@@ -323,7 +323,7 @@
                (> size (* 5 1024 1024))
                (do
                  (log/error "File " name
-                            " exceeded max size of 5 MB. (size: " size ")")
+                            " ima vise od 5 MB. (size: " size ")")
                  (update acc :failed-uploads (fnil conj []) name))
                (re-matches #"image/.*" content-type)
                (-> acc

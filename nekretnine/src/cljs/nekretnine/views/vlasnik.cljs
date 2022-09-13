@@ -59,11 +59,11 @@
 (defn title []
   (if @(rf/subscribe [::is-current-vlasnik?])
     [:div.level
-     [:h2.level-left "My vlasnik Page"]
+     [:h2.level-left "Moji oglasi"]
      [:a.level-right {:href (rtfe/href :guestbook.routes.app/profile)}
-      "Edit Page"]]
+      "Edit stranicu"]]
     (let [{:keys [display-name login]} @(rf/subscribe [::vlasnik])]
-      [:h2 display-name " <@" login ">'s Page"])))
+      [:h2 display-name " <" login ">"])))
 
 (defn vlasnik [{{{:keys [user]} :path
                  {:keys [post]} :query} :parameters}]
@@ -82,13 +82,13 @@
              [:p bio])
            [:div.columns.is-centered>div.column.is-two-thirds
             [:div.columns>div.column
-             [:h3 "Posts by " display-name " <@" user ">"]
+             [:h3 "Objavio " display-name " <" user ">"]
              (if @(rf/subscribe [:adrese/loading?])
                [adrese/adrese-list-placeholder]
                [adrese/adresa-list adrese post])]
             (when @(rf/subscribe [::is-current-vlasnik?])
               [:div.columns>div.column
-               [:h4 "New Post"]
+               [:h4 "Novi oglas"]
                [adrese/adresa-form]])]])))))
 
 

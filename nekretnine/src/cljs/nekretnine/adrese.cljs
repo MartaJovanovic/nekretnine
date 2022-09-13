@@ -410,7 +410,7 @@
   (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
     [:<>
      [errors-component :server-error]
-     [errors-component :unauthorized "Please log in before posting."]
+     [errors-component :unauthorized "Ulogovati se pre postavljanja"]
      [:div.field
       [:label.label {:for :ime} "Ime"]
       [errors-component :ime]
@@ -422,9 +422,35 @@
       [:div.control
        [image-uploader
         #(rf/dispatch [:adrese/save-media %])
-        "Insert an Image"]]]
+        "Ubaci sliku"]]]
      [:div.field
       [:label.label {:for :adresa} "Adresa"]
+      [errors-component :adresa]
+      [textarea-input
+       {:attrs {:name :adresa}
+        :save-timeout 1000
+        :value (rf/subscribe [:form/field :adresa])
+        :on-save #(rf/dispatch [:form/set-field :adresa %])}]]]))
+
+(defn adresa-form-content-reply []
+  (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
+    [:<>
+     [errors-component :server-error]
+     [errors-component :unauthorized "Ulogovati se pre postavljanja"]
+     [:div.field
+      [:label.label {:for :ime} "Ime"]
+      [errors-component :ime]
+      [text-input {:attrs {:name :ime}
+                   :save-timeout 1000
+                   :value (rf/subscribe [:form/field :ime])
+                   :on-save #(rf/dispatch [:form/set-field :ime %])}]]
+     [:div.field
+      [:div.control
+       [image-uploader
+        #(rf/dispatch [:adrese/save-media %])
+        "Ubaci sliku"]]]
+     [:div.field
+      [:label.label {:for :adresa} "Odgovor"]
       [errors-component :adresa]
       [textarea-input
        {:attrs {:name :adresa}
@@ -439,10 +465,10 @@
   [modals/modal-card
    {:on-close #(rf/dispatch [:form/clear])
     :id [:reply-modal (:id parent)]}
-   (str "Reply to post by user: " (:vlasnik parent))
+   (str "Odgovori na objavu  " (:vlasnik parent))
    [:<>
     [adresa-form-preview parent]
-    [adresa-form-content]]
+    [adresa-form-content-reply]]
    [:input.button.is-primary.is-fullwidth
     {:type :submit
      :disabled @(rf/subscribe [:form/validation-errors?])
@@ -451,7 +477,7 @@
                                @(rf/subscribe [:form/fields])
                                :parent (:id parent))
                               @(rf/subscribe [:adrese/media])])
-     :value (str "Reply to " (:vlasnik parent))}]])
+     :value (str "Odgovori  " (:vlasnik parent))}]])
 
 ;; (defn reply-modal [parent]
 ;;   [modals/modal-card
@@ -481,9 +507,12 @@
     [:input.button.is-primary.is-fullwidth
      {:type :submit
       :disabled @(rf/subscribe [:form/validation-errors?])
-      :on-click #(rf/dispatch [:adrese/send!
-                               @(rf/subscribe [:form/fields])
-                               @(rf/subscribe [:adrese/media])])
+      :on-click
+      (fn []
+        (rf/dispatch [:adrese/send!
+                      @(rf/subscribe [:form/fields])
+                      @(rf/subscribe [:adrese/media])])
+        (rf/dispatch [:adrese/load]))
       :value "Dodaj"}]]])
 
 

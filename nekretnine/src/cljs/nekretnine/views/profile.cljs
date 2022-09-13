@@ -120,9 +120,9 @@
   (r/with-let [k :display-name
                value (rf/subscribe [:profile/field k ""])]
     [:div.field
-     [:label.label {:for k} "Display Name"
+     [:label.label {:for k} "Ime"
       (when @(rf/subscribe [:profile/field-changed? k])
-        " (Changed)")]
+        " (Promenjen)")]
      [:div.field.has-addons
       [:div.control.is-expanded
        [text-input {:value value
@@ -137,7 +137,7 @@
     [:div.field
      [:label.label {:for k} "Bio"
       (when @(rf/subscribe [:profile/field-changed? k])
-        " (Changed)")]
+        " (Promenjen)")]
      [:div.control {:style {:margin-bottom "0.5em"}}
       [textarea-input {:value value
                        :on-save #(rf/dispatch [:profile/save-change k %])}]]
@@ -151,47 +151,47 @@
   (r/with-let [k :avatar
                url (rf/subscribe [:profile/field k ""])]
     [:<>
-     [:h3 "Avatar"
+     [:h3 "Profilna"
       (when @(rf/subscribe [:profile/field-changed? k])
-        " (Changed)")]
+        " (Promenjen)")]
      [image @url 128 128]
      [:div.field.is-grouped
       [:div.control
        ^{:key @(rf/subscribe [:profile/field-changed? k])}
        [image-uploader
         #(rf/dispatch [:profile/save-media k %])
-        "Choose an Avatar..."]]
+        "Izaberi profilnu "]]
       [:div.control>button.button.is-danger
        {:disabled (not @(rf/subscribe [:profile/field-changed? k]))
         :on-click #(rf/dispatch [:profile/save-media k nil])}
-       "Reset Avatar"]]]))
+       "Reset profilnu "]]]))
 
 (defn banner []
   (r/with-let [k :banner
                url (rf/subscribe [:profile/field k ""])]
     [:<>
-     [:h3 "Banner"
+     [:h3 "Baner"
       (when @(rf/subscribe [:profile/field-changed? k])
-        " (Changed)")]
+        " (Promenjen)")]
      [image @url 1200 400]
      [:div.field.is-grouped
       [:div.control
        [image-uploader
         #(rf/dispatch [:profile/save-media k %])
-        "Choose a Banner..."]]
+        "Izaberi baner..."]]
       [:div.control>button.button.is-danger
        {:disabled (not @(rf/subscribe [:profile/field-changed? k]))
         :on-click #(rf/dispatch [:profile/save-media k nil])}
-       "Reset Banner"]]]))
+       "Reset baner"]]]))
 
 
 
 (defn profile [_]
   (if-let [{:keys [login created_at profile]} @(rf/subscribe [:auth/user])]
     [:div.content
-     [:h1 "My Account"
+     [:h1 "Moj profil"
       (str " <" login ">")]
-     [:p (str "Joined: " (.toString created_at))]
+     [:p (str "Napravljen: " (.toString created_at))]
      [display-name]
      [bio]
      [avatar]
@@ -209,7 +209,7 @@
                         @(rf/subscribe [:profile/profile])
                         @(rf/subscribe [:profile/media])])
          :disabled disabled?}
-        "Update Profile"])]
+        "Update profil"])]
     [:div.content
      [:div {:style {:width "100%"}}
       [:progress.progress.is-dark {:max 100} "30%"]]]))

@@ -1,6 +1,7 @@
 html,
 body {
 	font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  background-color: #E8C07D;
   ;
 }
 @font-face {
@@ -34,12 +35,41 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 .container{
-  background-color: burlywood;
-  ;
+  
 }
 
 .reply-chain-item +.reply-chain-item {
   padding-top: 1em;
-  border-top: 1px dashed #caa;
+  border-top: 1px dashed #9FC088;
   }
-  
+
+  .button,.navbar.is-info, .notification.is-clearfix, .dugme, .button.is-info.is-fullwidth {
+    background-color: #9FC088;
+    color: #614124;
+    border-color: #614124;
+    border-inline-width: 5;
+    border-style: groove;
+  }
+
+  .media-content{
+    border-color: black;
+    border-style: ridge;
+    border-inline-width: 50;
+    padding: 18px;
+  }
+
+
+
+  .button.is-primary{
+    background-color: #9FC088;
+    color: #614124;
+    border-color: #614124;
+    border-inline-width: 5;
+  }
+
+  .card {
+    background-color: #E8C07D;
+    border-color: #614124;
+    border-style: groove;
+    border-inline-width: 50;
+  }

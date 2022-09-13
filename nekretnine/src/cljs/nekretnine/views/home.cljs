@@ -24,7 +24,7 @@
           [adr/adresa-form]
           :anonymous
           [:div.notification.is-clearfix
-           [:span "Log in da bi postavio oglas!"]
+           [:span "Log in da bi postavio oglas!\n"]
            [:div.buttons.is-pulled-right
             [auth/login-button]
             [auth/register-button]]])]])))

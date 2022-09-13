@@ -55,10 +55,10 @@
   [:div.content
    [:button.button.is-info.is-outlined.is-fullwidth
     {:on-click #(.back js/window.history)}
-    "Back to Feed"]
-   [:h3.title.is-3 "Post by " ime
+    "Nazad"]
+   [:h3.title.is-3 "Objavio  " ime
     "<" [:a {:href (str "/user/" vlasnik)} (str  vlasnik)] ">"]
-   [:h4.subtitle.is-4 "Posted at " (.toLocaleString timestamp)]
+   [:h4.subtitle.is-4 "Objavljeno " (.toLocaleString timestamp)]
    [adr/adresa post-content]])
 
 (defn post-page [_]

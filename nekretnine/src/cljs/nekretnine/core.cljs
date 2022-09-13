@@ -72,12 +72,12 @@
          [:div.navbar-start
           [:a.navbar-item
            {:href "/"}
-           "Home"]
+           "Pocetna "]
           (when (= @(rf/subscribe [:auth/user-state]) :authenticated)
             [:a.navbar-item
              {:href (rtfe/href :nekretnine.routes.app/vlasnik
                                {:user (:login @(rf/subscribe [:auth/user]))})}
-             "My Posts"])]
+             "Moji oglasi"])]
          [:div.navbar-end
           [:div.navbar-item
            (case @(rf/subscribe [:auth/user-state])
