@@ -110,12 +110,27 @@
  (fn [errors [_ id]]
    (get errors id)))
 
+(rf/reg-event-db
+ :app/hide-reply-modals
+ (fn [db _]
+   (update db :app/active-modals #(into
+                                   {}
+                                   (remove (fn [[k v]]
+                                             (= :reply-modal (first k))))
+                                   %))))
+
 (rf/reg-event-fx
  :adrese/send!-called-back
  (fn [_ [_ {:keys [success errors]}]]
    (if success
-     {:dispatch-n [[:form/clear-fields] [:adrese/clear-media]]}
+     {:dispatch-n [[:form/clear-fields] [:adrese/clear-media] [:app/hide-reply-modals]]}
      {:dispatch [:form/set-server-errors errors]})))
+
+(rf/reg-event-fx
+ :form/clear
+ (fn [_ _]
+   {:dispatch-n [[:form/clear-fields]
+                 [:adrese/clear-media]]}))
 
 (rf/reg-event-fx
  :adrese/send!
@@ -265,8 +280,11 @@
   [:<>
    [reply-modal m]
    [:button.button.is-rounded.is-small.is-outlined.level-item
-    {:on-click #(rf/dispatch [:app/show-modal
-                              [:reply-modal (:id m)]])
+    {:on-click
+     (fn []
+       (rf/dispatch [:form/clear])
+       (rf/dispatch [:app/show-modal
+                     [:reply-modal (:id m)]]))
      :disabled (not= @(rf/subscribe [:auth/user-state]) :authenticated)}
     [:span.material-icons
      {:style {:font-size "inherit"}}
@@ -415,9 +433,12 @@
         :on-save #(rf/dispatch [:form/set-field :adresa %])}]]]))
 
 
+
+
 (defn reply-modal [parent]
   [modals/modal-card
-   [:reply-modal (:id parent)]
+   {:on-close #(rf/dispatch [:form/clear])
+    :id [:reply-modal (:id parent)]}
    (str "Reply to post by user: " (:vlasnik parent))
    [:<>
     [adresa-form-preview parent]
@@ -431,6 +452,23 @@
                                :parent (:id parent))
                               @(rf/subscribe [:adrese/media])])
      :value (str "Reply to " (:vlasnik parent))}]])
+
+;; (defn reply-modal [parent]
+;;   [modals/modal-card
+;;    [:reply-modal (:id parent)]
+;;    (str "Reply to post by user: " (:vlasnik parent))
+;;    [:<>
+;;     [adresa-form-preview parent]
+;;     [adresa-form-content]]
+;;    [:input.button.is-primary.is-fullwidth
+;;     {:type :submit
+;;      :disabled @(rf/subscribe [:form/validation-errors?])
+;;      :on-click #(rf/dispatch [:adrese/send!
+;;                               (assoc
+;;                                @(rf/subscribe [:form/fields])
+;;                                :parent (:id parent))
+;;                               @(rf/subscribe [:adrese/media])])
+;;      :value (str "Reply to " (:vlasnik parent))}]])
 
 
 (defn adresa-form []
