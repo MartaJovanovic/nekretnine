@@ -10,9 +10,21 @@
 (defn save-adresa! [{:keys [login]} adresa]
   (if-let [errors (validate-adresa adresa)]
     (throw (ex-info "Adresa nije validna"
-                    {:guestbook/error-id :validation
+                    {:neretnine/error-id :validation
                      :errors errors}))
-    (db/save-adresa! (assoc adresa :vlasnik login))))
+    (let [tags (map second
+                    (re-seq #"(?<=\s|^)#([-\w]+)(?=\s|$)"
+                            (:adresa adresa)))]
+
+      (conman/with-transaction [db/*db*]
+        (let [post-id (:id
+                       (db/save-adresa! db/*db*
+                                        (assoc adresa
+                                               :vlasnik login
+                                               :parent (:parent adresa))))]
+          (db/get-timeline-post db/*db* {:post post-id
+                                         :user login
+                                         :is_boost false}))))))
 
 (defn adrese-by-vlasnik [vlasnik]
   {:adrese (vec (db/get-adrese-by-vlasnik {:vlasnik vlasnik}))})

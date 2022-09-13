@@ -115,7 +115,8 @@
       {:parameters
        {:body ;; Data Spec for Request body parameters
         {:ime string?
-         :adresa string?}}
+         :adresa string?
+         (ds/opt :parent) (ds/maybe int?)}}
        :responses
        {200
         {:body map?}

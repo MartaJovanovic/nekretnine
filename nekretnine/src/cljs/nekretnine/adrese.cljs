@@ -1,12 +1,13 @@
 (ns nekretnine.adrese
-  (:require
-   [clojure.string :as string]
-   [reagent.core :as r]
-   [re-frame.core :as rf]
-   [nekretnine.validation :refer [validate-adresa]]
-   [nekretnine.components :refer [text-input textarea-input image md image-uploader]]
-   [reagent.dom :as dom]
-   [reitit.frontend.easy :as rtfe]))
+  (:require [clojure.string :as string]
+            [nekretnine.components :refer [image image-uploader md text-input
+                                           textarea-input]]
+            [nekretnine.modals :as modals]
+            [nekretnine.validation :refer [validate-adresa]]
+            [re-frame.core :as rf]
+            [reagent.core :as r]
+            [reagent.dom :as dom]
+            [reitit.frontend.easy :as rtfe]))
 
 
 (rf/reg-event-fx
@@ -244,77 +245,116 @@
        "Refresuj")]))
 
 
+
+
+
+(defn expand-post-button [{:keys [id root_id] :as m}]
+  [:button.button.is-rounded.is-small.is-secondary.is-outlined.level-item
+   {:on-click
+    (fn [_]
+      (let [{{:keys [name]} :data
+             {:keys [path query]} :parameters}
+            @(rf/subscribe [:router/current-route])]
+        (rtfe/replace-state name path (assoc query :post id)))
+      (rtfe/push-state :nekretnine.routes.app/post {:post root_id}))}
+   [:i.material-icons
+    "open_in_new"]])
+
+(declare reply-modal)
+(defn reply-button [{:keys [reply_count] :as m}]
+  [:<>
+   [reply-modal m]
+   [:button.button.is-rounded.is-small.is-outlined.level-item
+    {:on-click #(rf/dispatch [:app/show-modal
+                              [:reply-modal (:id m)]])
+     :disabled (not= @(rf/subscribe [:auth/user-state]) :authenticated)}
+    [:span.material-icons
+     {:style {:font-size "inherit"}}
+     "chat"]
+    [:span.ml-1 reply_count]]])
+
+(defn adresa-content [{:keys [adrese name vlasnik]
+                       :as m}]
+  [:<>
+   (if (seq adrese)
+     (doall
+      (for [{:keys [adresa id] :as msg} (reverse adrese)]
+        ^{:key id}
+        [md :p.reply-chain-item adresa]))
+     [md (:adresa m)])
+   [:p " - " name
+    " <"
+    [:a {:href (str "/user/" vlasnik)} (str  vlasnik)]
+    ">"]])
+
+(defn post-meta [{:keys [id is_boost timestamp posted_at poster poster_avatar
+                         source source_avatar] :as m}]
+  (let [posted_at (or posted_at timestamp)]
+    [:<>
+     [:div.mb-4>time
+      (if posted_at
+        (.toLocaleString posted_at)
+        "NULL POSTED_AT")]]))
+
 ;; (defn adresa
 ;;   ([m] [adresa m {}])
-;;   ([{:keys [id timestamp adresa ime vlasnik avatar] :as m}
+;;   ([{:keys [id timestamp adresa ime vlasnik avatar boosts is_boost reply_count]
+;;      :or {boosts 0}
+;;      :as m}
 ;;     {:keys [include-link?]
-;;      :or {include-link? true}}]
-;;    [:article.media
-;;     [:figure.media-left
-;;      [image (or avatar "/img/avatar-default.png") 128 128]]
-;;     [:div.media-content>div.content
-;;      [:time (.toLocaleString timestamp)]
-;;      [md adresa]
-;;      (when include-link?
-;;        [:p>a {:on-click
-;;               (fn [_]
-;;                 (let [{{:keys [ime]} :data
-;;                        {:keys [path query]} :parameters}
-;;                       @(rf/subscribe [:router/current-route])]
-;;                   (rtfe/replace-state ime path (assoc query :post id)))
-;;                 (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
-;;         "View Post"])
-;;      [:p " - " ime
-;;       " <"
+;;      :or {include-link? true
+;;           include-bar? true}}]
+;;    (let [{:keys [posted_at poster poster_avatar
+;;                  source source_avatar] :as m}
+;;          (if is_boost
+;;            m
+;;            (assoc m
+;;                   :poster vlasnik
+;;                   :poster_avatar avatar
+;;                   :posted_at timestamp))]
+;;      [:article.media
+;;       [:figure.media-left
+;;        [image (or avatar "/img/avatar-default.png") 128 128]]
+;;       [:div.media-content
+;;        [:div.content
+;;         [:div.mb-4>time
+;;          (.toLocaleString posted_at)]
+;;         [md adresa]
+;;         [:p " - " ime
+;;          " <"
+;;          [:a {:href (str "/user/" vlasnik)} (str "@" vlasnik)]
+;;          ">"]]
+;;        [:nav.level
+;;         [:div.level-left
 
-;;       [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
-;;       ">"]]]))
+;;          (when include-link?
+;;            [expand-post-button m])
+;;          [reply-button m]]]]])))
+
+
 
 
 (defn adresa
   ([m] [adresa m {}])
-  ([{:keys [id timestamp adresa ime vlasnik avatar boosts is_boost]
+  ([{:keys [id timestamp adresa ime vlasnik avatar boosts is_boost reply_count]
      :or {boosts 0}
      :as m}
-    {:keys [include-link?]
-     :or {include-link? true}}]
-   (let [{:keys [posted_at poster poster_avatar
-                 source source_avatar] :as m}
-         (if is_boost
-           m
-           (assoc m
-                  :poster vlasnik
-                  :poster_avatar avatar
-                  :posted_at timestamp))]
-     [:article.media
-      [:figure.media-left
-       [image (or avatar "/img/avatar-default.png") 128 128]]
-      [:div.media-content
-       [:div.content
-        [:div.mb-4>time
-         (.toLocaleString posted_at)]
-        [md adresa]
-        [:p " - " ime
-         " <"
-         [:a {:href (str "/user/" vlasnik)} (str "@" vlasnik)]
-         ">"]]
+    {:keys [include-link? include-bar?]
+     :or {include-link? true
+          include-bar? true}}]
+   [:article.media
+    [:figure.media-left
+     [image (or avatar "/img/avatar-default.png") 128 128]]
+    [:div.media-content
+     [:div.content
+      [post-meta m]
+      [adresa-content m]]
+     (when include-bar?
        [:nav.level
         [:div.level-left
          (when include-link?
-           [:button.button.level-item
-            {:class ["is-rounded"
-                     "is-small"
-                     "is-secondary"
-                     "is-outlined"]
-             :on-click
-             (fn [_]
-               (let [{{:keys [name]} :data
-                      {:keys [path query]} :parameters}
-                     @(rf/subscribe [:router/current-route])]
-                 (rtfe/replace-state name path (assoc query :post id)))
-               (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
-            [:i.material-icons
-             "open_in_new"]])]]]])))
+           [expand-post-button m])
+         [reply-button m]]])]]))
 
 
 
@@ -336,49 +376,120 @@
 
 
 
+(defn adresa-form-preview [parent]
+  (let [{:keys [login profile]} @(rf/subscribe [:auth/user])
+        msg {:adresa @(rf/subscribe [:form/field :adresa])
+             :id -1
+             :timestamp (js/Date.)
+             :ime @(rf/subscribe [:form/field :ime])
+             :vlasnik login
+             :avatar (:avatar profile)}]
+    [adresa-preview
+     (assoc msg :adrese
+            (cons msg (:adrese parent)))]))
+
+(defn adresa-form-content []
+  (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
+    [:<>
+     [errors-component :server-error]
+     [errors-component :unauthorized "Please log in before posting."]
+     [:div.field
+      [:label.label {:for :ime} "Ime"]
+      [errors-component :ime]
+      [text-input {:attrs {:name :ime}
+                   :save-timeout 1000
+                   :value (rf/subscribe [:form/field :ime])
+                   :on-save #(rf/dispatch [:form/set-field :ime %])}]]
+     [:div.field
+      [:div.control
+       [image-uploader
+        #(rf/dispatch [:adrese/save-media %])
+        "Insert an Image"]]]
+     [:div.field
+      [:label.label {:for :adresa} "Adresa"]
+      [errors-component :adresa]
+      [textarea-input
+       {:attrs {:name :adresa}
+        :save-timeout 1000
+        :value (rf/subscribe [:form/field :adresa])
+        :on-save #(rf/dispatch [:form/set-field :adresa %])}]]]))
+
+
+(defn reply-modal [parent]
+  [modals/modal-card
+   [:reply-modal (:id parent)]
+   (str "Reply to post by user: " (:vlasnik parent))
+   [:<>
+    [adresa-form-preview parent]
+    [adresa-form-content]]
+   [:input.button.is-primary.is-fullwidth
+    {:type :submit
+     :disabled @(rf/subscribe [:form/validation-errors?])
+     :on-click #(rf/dispatch [:adrese/send!
+                              (assoc
+                               @(rf/subscribe [:form/fields])
+                               :parent (:id parent))
+                              @(rf/subscribe [:adrese/media])])
+     :value (str "Reply to " (:vlasnik parent))}]])
 
 
 (defn adresa-form []
   [:div.card
    [:div.card-header>p.card-header-title
-    "Objavi"]
-   (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
-     [:div.card-content
-      [adresa-preview {:adresa @(rf/subscribe [:form/field :adresa])
-                       :id -1
-                       :timestamp (js/Date.)
-                       :ime @(rf/subscribe [:form/field :ime])
-                       :vlasnik login
-                       :avatar (:avatar profile)}]
-      [errors-component :server-error]
-      [errors-component :unauthorized "Please log in before posting."]
-      [:div.field
-       [:label.label {:for :name} "Name"]
-       [errors-component :ime]
-       [text-input {:attrs {:name :ime}
-                    :save-timeout 1000
-                    :value (rf/subscribe [:form/field :ime])
-                    :on-save #(rf/dispatch [:form/set-field :ime %])}]]
-      [:div.field
-       [:label.label {:for :adresa} "Adresa"]
-       [errors-component :adresa]
-       [textarea-input
-        {:attrs {:name :adresa}
-         :save-timeout 1000
-         :value (rf/subscribe [:form/field :adresa])
-         :on-save #(rf/dispatch [:form/set-field :adresa %])}]]
-      [:div.field
-       [:div.control
-        [image-uploader
-         #(rf/dispatch [:adrese/save-media %])
-         "Ubaci sliku"]]]
-      [:input.button.is-primary.is-fullwidth
-       {:type :submit
-        :disabled @(rf/subscribe [:form/validation-errors?])
-        :on-click #(rf/dispatch [:adrese/send!
-                                 @(rf/subscribe [:form/fields])
-                                 @(rf/subscribe [:adrese/media])])
-        :value "Dodaj"}]])])
+    "Objavi nesto"]
+   [:div.card-content
+    [adresa-form-preview {}]
+    [adresa-form-content]
+    [:input.button.is-primary.is-fullwidth
+     {:type :submit
+      :disabled @(rf/subscribe [:form/validation-errors?])
+      :on-click #(rf/dispatch [:adrese/send!
+                               @(rf/subscribe [:form/fields])
+                               @(rf/subscribe [:adrese/media])])
+      :value "Dodaj"}]]])
+
+
+;; (defn adresa-form []
+;;   [:div.card
+;;    [:div.card-header>p.card-header-title
+;;     "Objavi"]
+;;    (let [{:keys [login profile]} @(rf/subscribe [:auth/user])]
+;;      [:div.card-content
+;;       [adresa-preview {:adresa @(rf/subscribe [:form/field :adresa])
+;;                        :id -1
+;;                        :timestamp (js/Date.)
+;;                        :ime @(rf/subscribe [:form/field :ime])
+;;                        :vlasnik login
+;;                        :avatar (:avatar profile)}]
+;;       [errors-component :server-error]
+;;       [errors-component :unauthorized "Please log in before posting."]
+;;       [:div.field
+;;        [:label.label {:for :ime} "Ime"]
+;;        [errors-component :ime]
+;;        [text-input {:attrs {:name :ime}
+;;                     :save-timeout 1000
+;;                     :value (rf/subscribe [:form/field :ime])
+;;                     :on-save #(rf/dispatch [:form/set-field :ime %])}]]
+;;       [:div.field
+;;        [:label.label {:for :adresa} "Adresa"]
+;;        [errors-component :adresa]
+;;        [textarea-input
+;;         {:attrs {:name :adresa}
+;;          :save-timeout 1000
+;;          :value (rf/subscribe [:form/field :adresa])
+;;          :on-save #(rf/dispatch [:form/set-field :adresa %])}]]
+;;       [:div.field
+;;        [:div.control
+;;         [image-uploader
+;;          #(rf/dispatch [:adrese/save-media %])
+;;          "Ubaci sliku"]]]
+;;       [:input.button.is-primary.is-fullwidth
+;;        {:type :submit
+;;         :disabled @(rf/subscribe [:form/validation-errors?])
+;;         :on-click #(rf/dispatch [:adrese/send!
+;;                                  @(rf/subscribe [:form/fields])
+;;                                  @(rf/subscribe [:adrese/media])])
+;;         :value "Dodaj"}]])])
 
 
 (defn adr-li [m adr-id]
@@ -400,3 +511,11 @@
     (for [m @adrese]
       ^{:key (:timestamp m)}
       [adr-li m adr-id])]))
+
+
+
+
+
+
+
+
