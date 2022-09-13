@@ -40,7 +40,7 @@ body {
 
 .reply-chain-item +.reply-chain-item {
   padding-top: 1em;
-  border-top: 1px dashed #9FC088;
+  border-top: 3px dashed #9FC088;
   }
 
   .button,.navbar.is-info, .notification.is-clearfix, .dugme, .button.is-info.is-fullwidth {
