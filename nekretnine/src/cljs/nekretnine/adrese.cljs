@@ -291,7 +291,7 @@
      "chat"]
     [:span.ml-1 reply_count]]])
 
-(defn adresa-content [{:keys [adrese name vlasnik]
+(defn adresa-content [{:keys [adrese ime vlasnik]
                        :as m}]
   [:<>
    (if (seq adrese)
@@ -300,7 +300,7 @@
         ^{:key id}
         [md :p.reply-chain-item adresa]))
      [md (:adresa m)])
-   [:p " - " name
+   [:p " - " ime
     " <"
     [:a {:href (str "/user/" vlasnik)} (str  vlasnik)]
     ">"]])

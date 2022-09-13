@@ -209,7 +209,7 @@
                         @(rf/subscribe [:profile/profile])
                         @(rf/subscribe [:profile/media])])
          :disabled disabled?}
-        "Update profil"])]
+        "Update Profile"])]
     [:div.content
      [:div {:style {:width "100%"}}
       [:progress.progress.is-dark {:max 100} "30%"]]]))

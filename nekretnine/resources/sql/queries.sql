@@ -144,3 +144,7 @@ where is_boost = :is_boost
     and id = :post
 order by posted_at asc
 limit 1
+-- :name deleteP :? :1
+-- :obrisi
+DELETE from oglasi
+where id = :id
