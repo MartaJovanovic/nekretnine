@@ -41,7 +41,7 @@
 (def vlasnik-controllers
   [{:parameters {:path [:user]}
     :start (fn [{{:keys [user]} :path}]
-             (rf/dispatch [:messages/load-by-vlasnik user]))}
+             (rf/dispatch [:adrese/load-by-vlasnik user]))}
    {:parameters {:path [:user]}
     :start (fn [{{:keys [user]} :path}]
              (rf/dispatch [::fetch-vlasnik user]))

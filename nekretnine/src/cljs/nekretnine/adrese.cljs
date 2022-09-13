@@ -25,10 +25,20 @@
  (fn [db _]
    (:adrese/loading? db)))
 
+
 (rf/reg-sub
  :adrese/list
  (fn [db _]
-   (:adrese/list db [])))
+   (:list
+    (reduce
+     (fn [{:keys [ids list] :as acc} {:keys [id] :as msg}]
+       (if (contains? ids id)
+         acc
+         {:list (conj list msg)
+          :ids (conj ids id)}))
+     {:list []
+      :ids #{}}
+     (:adrese/list db [])))))
 
 (rf/reg-event-db
  :adrese/set
@@ -103,11 +113,11 @@
  :adrese/send!-called-back
  (fn [_ [_ {:keys [success errors]}]]
    (if success
-     {:dispatch-n [[:form/clear-fields] [:message/clear-media]]}
+     {:dispatch-n [[:form/clear-fields] [:adrese/clear-media]]}
      {:dispatch [:form/set-server-errors errors]})))
 
 (rf/reg-event-fx
- :message/send!
+ :adrese/send!
  (fn [{:keys [db]} [_ fields media]]
    (if (not-empty media)
      {:db (dissoc db :form/server-errors)
@@ -116,19 +126,23 @@
        :files media
        :handler
        (fn [response] (rf/dispatch
-                       [:message/send!
-                        (update fields :message
+                       [:adrese/send!
+                        (update fields :adresa
                                 string/replace
                                 #"\!\[(.*)\]\((.+)\)"
                                 (fn [[old alt url]]
                                   (str "![" alt "]("
-                                       (if-some [name ((:message/urls db) url)]
+                                       (if-some [name ((:adrese/urls db) url)]
                                          (get response name)
                                          url) ")")))]))}}
      {:db (dissoc db :form/server-errors)
-      :ws/send! {:message [:message/create! fields]
+      :ws/send! {:adresa [:adrese/create! fields]
                  :timeout 10000
-                 :callback-event [:message/send!-called-back]}})))
+                 :callback-event [:adrese/send!-called-back]}})
+   {:db (dissoc db :form/server-errors)
+    :ws/send! {:adrese [:adrese/create! fields]
+               :timeout 10000
+               :callback-event [:adrese/send!-called-back]}}))
 
 
 (rf/reg-event-fx
@@ -140,12 +154,14 @@
                :callback-event [:adrese/send!-called-back]}}))
 
 
+
+
 (rf/reg-event-fx
  :adrese/load-by-vlasnik
  (fn [{:keys [db]} [_ vlasnik]]
    {:db (assoc db
                :adrese/loading? true
-               :adrese/filter {:vlasnik vlasnik}
+               :adrese/filter {:poster vlasnik}
                :adrese/list nil)
     :ajax/get {:url (str "/api/adrese/by/" vlasnik)
                :success-path [:adrese]
@@ -176,24 +192,26 @@
 
 
 (rf/reg-event-db
- :message/save-media
+ :adrese/save-media
  (fn [db [_ img]]
    (let [url (js/URL.createObjectURL img)
          name (keyword (str "msg-" (random-uuid)))]
      (-> db
          (update-in [:form/fields :adresa] str "![](" url ")")
-         (update :message/media (fnil assoc {}) name img)
-         (update :message/urls (fnil assoc {}) url name)))))
-
-(rf/reg-event-db
- :message/clear-media
- (fn [db _]
-   (dissoc db :message/media :message/urls)))
+         (update :adrese/media (fnil assoc {}) name img)
+         (update :adrese/urls (fnil assoc {}) url name)))))
 
 (rf/reg-sub
- :message/media
+ :adrese/media
  (fn [db [_]]
-   (:message/media db)))
+   (:adrese/media db)))
+
+(rf/reg-event-db
+ :adrese/clear-media
+ (fn [db _]
+   (dissoc db :adrese/media :adrese/urls)))
+
+
 
 
 
@@ -226,31 +244,78 @@
        "Refresuj")]))
 
 
+;; (defn adresa
+;;   ([m] [adresa m {}])
+;;   ([{:keys [id timestamp adresa ime vlasnik avatar] :as m}
+;;     {:keys [include-link?]
+;;      :or {include-link? true}}]
+;;    [:article.media
+;;     [:figure.media-left
+;;      [image (or avatar "/img/avatar-default.png") 128 128]]
+;;     [:div.media-content>div.content
+;;      [:time (.toLocaleString timestamp)]
+;;      [md adresa]
+;;      (when include-link?
+;;        [:p>a {:on-click
+;;               (fn [_]
+;;                 (let [{{:keys [ime]} :data
+;;                        {:keys [path query]} :parameters}
+;;                       @(rf/subscribe [:router/current-route])]
+;;                   (rtfe/replace-state ime path (assoc query :post id)))
+;;                 (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
+;;         "View Post"])
+;;      [:p " - " ime
+;;       " <"
+
+;;       [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
+;;       ">"]]]))
+
+
 (defn adresa
   ([m] [adresa m {}])
-  ([{:keys [id timestamp adresa ime vlasnik avatar] :as m}
+  ([{:keys [id timestamp adresa ime vlasnik avatar boosts is_boost]
+     :or {boosts 0}
+     :as m}
     {:keys [include-link?]
      :or {include-link? true}}]
-   [:article.media
-    [:figure.media-left
-     [image (or avatar "/img/avatar-default.png") 128 128]]
-    [:div.media-content>div.content
-     [:time (.toLocaleString timestamp)]
-     [md adresa]
-     (when include-link?
-       [:p>a {:on-click
-              (fn [_]
-                (let [{{:keys [ime]} :data
-                       {:keys [path query]} :parameters}
-                      @(rf/subscribe [:router/current-route])]
-                  (rtfe/replace-state ime path (assoc query :post id)))
-                (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
-        "View Post"])
-     [:p " - " ime
-      " <"
+   (let [{:keys [posted_at poster poster_avatar
+                 source source_avatar] :as m}
+         (if is_boost
+           m
+           (assoc m
+                  :poster vlasnik
+                  :poster_avatar avatar
+                  :posted_at timestamp))]
+     [:article.media
+      [:figure.media-left
+       [image (or avatar "/img/avatar-default.png") 128 128]]
+      [:div.media-content
+       [:div.content
+        [:div.mb-4>time
+         (.toLocaleString posted_at)]
+        [md adresa]
+        [:p " - " ime
+         " <"
+         [:a {:href (str "/user/" vlasnik)} (str "@" vlasnik)]
+         ">"]]
+       [:nav.level
+        [:div.level-left
+         (when include-link?
+           [:button.button.level-item
+            {:class ["is-rounded"
+                     "is-small"
+                     "is-secondary"
+                     "is-outlined"]
+             :on-click
+             (fn [_]
+               (let [{{:keys [name]} :data
+                      {:keys [path query]} :parameters}
+                     @(rf/subscribe [:router/current-route])]
+                 (rtfe/replace-state name path (assoc query :post id)))
+               (rtfe/push-state :nekretnine.routes.app/post {:post id}))}
+            [:i.material-icons
+             "open_in_new"]])]]]])))
 
-      [:a {:href (str "/user/" vlasnik)} (str vlasnik)]
-      ">"]]]))
 
 
 (defn adresa-preview [m]
@@ -283,7 +348,7 @@
                        :id -1
                        :timestamp (js/Date.)
                        :ime @(rf/subscribe [:form/field :ime])
-                       :author login
+                       :vlasnik login
                        :avatar (:avatar profile)}]
       [errors-component :server-error]
       [errors-component :unauthorized "Please log in before posting."]
@@ -305,14 +370,14 @@
       [:div.field
        [:div.control
         [image-uploader
-         #(rf/dispatch [:message/save-media %])
-         "Insert an Image"]]]
+         #(rf/dispatch [:adrese/save-media %])
+         "Ubaci sliku"]]]
       [:input.button.is-primary.is-fullwidth
        {:type :submit
         :disabled @(rf/subscribe [:form/validation-errors?])
         :on-click #(rf/dispatch [:adrese/send!
                                  @(rf/subscribe [:form/fields])
-                                 @(rf/subscribe [:message/media])])
+                                 @(rf/subscribe [:adrese/media])])
         :value "Dodaj"}]])])
 
 

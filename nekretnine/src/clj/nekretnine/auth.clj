@@ -9,7 +9,8 @@
   (cond-> #{:any}
     (some? identity) (conj :authenticated)))
 (def roles
-  {:adrese/create! #{:authenticated}
+  {:adrese/boost! #{:authenticated}
+   :adrese/create! #{:authenticated}
    :vlasnik/get #{:any}
    :account/set-profile! #{:authenticated}
    :auth/login #{:any}

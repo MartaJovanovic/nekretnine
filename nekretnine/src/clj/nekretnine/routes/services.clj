@@ -83,9 +83,11 @@
                :vlasnik (ds/maybe string?)
                :avatar (ds/maybe string?)}]}}}
           :handler
-          (fn [_]
-            (Thread/sleep 500)
-            (response/ok (adr/adresa-list)))}}]
+          (fn [{{{:keys [boosts]
+                  :or {boosts true}} :query} :parameters}]
+            (response/ok (if boosts
+                           (adr/timeline)
+                           (adr/adresa-list))))}}]
     ["/by/:vlasnik"
      {:get
       {:parameters {:path {:vlasnik string?}}
@@ -96,29 +98,17 @@
           [{:id pos-int?
             :ime string?
             :adresa string?
-            :timestamp inst?}]}}}
+            :timestamp inst?
+            :vlasnik (ds/maybe string?)
+            :avatar (ds/maybe string?)}]}}}
        :handler
-       (fn [{{{:keys [vlasnik]} :path} :parameters}]
-         (response/ok (adr/adrese-by-vlasnik vlasnik)))}}]]
-
+       (fn [{{{:keys [vlasnik]} :path {:keys [boosts]
+                                       :or {boosts true}} :query} :parameters}]
+         (response/ok
+          (if boosts
+            (adr/timeline-for-poster vlasnik)
+            (adr/adrese-by-vlasnik vlasnik))))}}]]
    ["/adresa"
-    ["/:post-id"
-     {::auth/roles (auth/roles :adresa/get)
-      :get {:parameters
-            {:path
-             {:post-id pos-int?}}
-            :responses
-            {200 {:adresa map?}
-             403 {:adresa string?}
-             404 {:adresa string?}
-             500 {:adresa string?}}
-            :handler
-            (fn [{{{:keys [post-id]} :path} :parameters}]
-              (if-some [post (adr/get-adresa post-id)]
-                (response/ok
-                 {:adresa post})
-                (response/not-found
-                 {:adresa "Post Not Found"})))}}]
     [""
      {::auth/roles (auth/roles :adrese/create!)
       :post
@@ -149,7 +139,48 @@
 ;;else
                  (response/internal-server-error
                   {:errors
-                   {:server-error ["Failed to save message!"]}}))))))}}]]
+                   {:server-error ["Failed to save message!"]}}))))))}}]
+    ["/:post-id"
+     {:parameters
+      {:path
+       {:post-id pos-int?}}}
+     [""
+      {::auth/roles (auth/roles :adresa/get)
+       :get {:parameters
+             {:path
+              {:post-id pos-int?}}
+             :responses
+             {200 {:adresa map?}
+              403 {:adresa string?}
+              404 {:adresa string?}
+              500 {:adresa string?}}
+             :handler
+             (fn [{{{:keys [post-id]} :path} :parameters}]
+               (if-some [post (adr/get-adresa post-id)]
+                 (response/ok
+                  {:adresa post})
+                 (response/not-found
+                  {:adresa "Post Not Found"})))}}]
+
+     ["/boost"
+      {::auth/roles (auth/roles :adrese/boost!)
+       :post {:parameters {:body {:poster (ds/maybe string?)}}
+              :responses
+              {200 {:body map?}
+               400 {:message string?}}
+              :handler
+              (fn [{{{:keys [post-id]} :path
+                     {:keys [poster]} :body} :parameters
+                    {:keys [identity]} :session}]
+                (try
+                  (let [post (adr/boost-message identity post-id poster)]
+                    (response/ok {:status :ok
+                                  :post post}))
+                  (catch Exception e
+                    (response/bad-request
+                     {:message
+                      (str "Could not boost message: " post-id
+                           " as " (:login identity))}))))}}]]]
 
    ["/login"
     {::auth/roles (auth/roles :auth/login)
